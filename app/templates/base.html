@@ -15,8 +15,10 @@
     <a href="/" class="font-semibold text-white">{{ config.APP_NAME }}</a>
 
     <div class="flex items-center gap-4">
+      <a href="/" class="text-sm text-gray-300 hover:text-white">Today</a>
       <a href="/ingredients" class="text-sm text-gray-300 hover:text-white">Ingredients</a>
       <a href="/recipes" class="text-sm text-gray-300 hover:text-white">Recipes</a>
+      <a href="/goals" class="text-sm text-gray-300 hover:text-white">Goals</a>
       {% block nav_links %}{% endblock %}
 
       {# Profile switcher — only shown when multiple profiles are configured #}

@@ -1,7 +1,7 @@
 import json
 from flask import Blueprint, jsonify, request, render_template, redirect, url_for, flash
 from app import db
-from app.models import Ingredient, Recipe, RecipeIngredient
+from app.models import Ingredient, Recipe, RecipeIngredient, DailyLogEntry
 from app.utils.helpers import current_profile, _float
 from app.utils.macros import calculate_recipe_macros
 
@@ -102,9 +102,13 @@ def delete_recipe(id):
         flash(f"Cannot delete — used as a sub-recipe in '{parent.name}'.", "error")
         return redirect(url_for("recipes.view_recipe", id=id))
     name = recipe.name
+    log_count = DailyLogEntry.query.filter_by(recipe_id=id).count()
     db.session.delete(recipe)
     db.session.commit()
-    flash(f"'{name}' deleted.", "success")
+    msg = f"'{name}' deleted."
+    if log_count:
+        msg += f" {log_count} log entr{'y' if log_count == 1 else 'ies'} also removed."
+    flash(msg, "success")
     return redirect(url_for("recipes.list_recipes"))
 
 

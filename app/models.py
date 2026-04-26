@@ -57,6 +57,13 @@ class Recipe(db.Model):
         lazy="select",
     )
 
+    log_entries = db.relationship(
+        "DailyLogEntry",
+        backref="recipe",
+        cascade="all, delete-orphan",
+        lazy="select",
+    )
+
     def to_dict(self):
         return {
             "id": self.id,
@@ -81,3 +88,49 @@ class RecipeIngredient(db.Model):
 
     ingredient = db.relationship("Ingredient")
     sub_recipe = db.relationship("Recipe", foreign_keys="[RecipeIngredient.sub_recipe_id]")
+
+
+class UserGoals(db.Model):
+    __tablename__ = "user_goals"
+
+    id = db.Column(db.Integer, primary_key=True)
+    profile_id = db.Column(db.String(100), nullable=False, unique=True)
+    daily_calories = db.Column(db.Float, nullable=False, default=2000)
+    daily_protein = db.Column(db.Float, nullable=False, default=150)
+    daily_carbs = db.Column(db.Float, nullable=False, default=250)
+    daily_fat = db.Column(db.Float, nullable=False, default=65)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "dailyCalories": self.daily_calories,
+            "dailyProtein": self.daily_protein,
+            "dailyCarbs": self.daily_carbs,
+            "dailyFat": self.daily_fat,
+            "updatedAt": self.updated_at.isoformat(),
+        }
+
+
+class DailyLogEntry(db.Model):
+    __tablename__ = "daily_log_entries"
+
+    id = db.Column(db.Integer, primary_key=True)
+    profile_id = db.Column(db.String(100), nullable=False)
+    date = db.Column(db.Date, nullable=False, index=True)
+    recipe_id = db.Column(db.Integer, db.ForeignKey("recipes.id"), nullable=False)
+    servings = db.Column(db.Float, nullable=False)
+    logged_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self, macros=None):
+        d = {
+            "id": self.id,
+            "date": self.date.isoformat(),
+            "recipeId": self.recipe_id,
+            "recipeName": self.recipe.name if self.recipe else None,
+            "servings": self.servings,
+            "loggedAt": self.logged_at.isoformat(),
+        }
+        if macros is not None:
+            d["macros"] = macros
+        return d

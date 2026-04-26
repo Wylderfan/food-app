@@ -1,11 +1,6 @@
-from flask import Blueprint, render_template, request, session, redirect, url_for, current_app
+from flask import Blueprint, request, session, redirect, url_for, current_app
 
 main_bp = Blueprint("main", __name__)
-
-
-@main_bp.route("/")
-def index():
-    return render_template("main/index.html")
 
 
 @main_bp.route("/switch-profile", methods=["POST"])

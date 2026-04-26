@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+{% block title %}{{ sel_date.strftime('%a %b %-d') }} — {{ config.APP_NAME }}{% endblock %}
+
+{% macro macro_row(label, consumed, goal, unit, bar_color) %}
+  {% set pct_raw = (consumed / goal * 100) if goal and goal > 0 else 0 %}
+  {% set pct = pct_raw if pct_raw < 100 else 100 %}
+  {% set over = pct_raw > 100 %}
+  <div>
+    <div class="flex justify-between text-sm mb-1">
+      <span class="text-gray-300">{{ label }}</span>
+      <span class="{{ 'text-red-300' if over else 'text-gray-400' }}">
+        {{ consumed | round(0) | int }}{{ unit }}
+        <span class="text-gray-600">/ {{ goal | round(0) | int }}{{ unit }}</span>
+        {% if over %}<span class="text-xs text-red-400 ml-1">+{{ (consumed - goal) | round(0) | int }}{{ unit }}</span>{% endif %}
+      </span>
+    </div>
+    <div class="bg-gray-800 rounded-full h-2 overflow-hidden">
+      <div class="h-full {{ 'bg-red-500' if over else bar_color }} transition-all"
+           style="width: {{ pct }}%"></div>
+    </div>
+  </div>
+{% endmacro %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto">
+
+  {# Date selector #}
+  <div class="flex items-center justify-between mb-6 flex-wrap gap-3">
+    <div class="flex items-center gap-3">
+      <a href="/?date={{ prev_date.isoformat() }}"
+         class="text-gray-400 hover:text-white text-2xl leading-none transition-colors">←</a>
+      <h1 class="text-xl font-semibold">
+        {{ sel_date.strftime('%a, %b %-d, %Y') }}
+        {% if sel_date == today %}
+        <span class="text-indigo-400 text-sm font-normal ml-1">Today</span>
+        {% endif %}
+      </h1>
+      <a href="/?date={{ next_date.isoformat() }}"
+         class="text-gray-400 hover:text-white text-2xl leading-none transition-colors">→</a>
+    </div>
+    <div class="flex items-center gap-2">
+      {% if sel_date != today %}
+      <a href="/" class="bg-gray-700 hover:bg-gray-600 text-xs px-3 py-1.5 rounded text-gray-200 transition-colors">Today</a>
+      {% endif %}
+      <input type="date" id="date-picker" value="{{ sel_date.isoformat() }}"
+             onchange="if (this.value) window.location.href='/?date=' + this.value"
+             class="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm text-gray-200">
+    </div>
+  </div>
+
+  {# Daily summary #}
+  <div class="bg-gray-900 border border-gray-800 rounded-lg p-5 mb-6">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-sm font-semibold text-gray-400 uppercase tracking-wide">Daily Summary</h2>
+      <a href="/goals" class="text-xs text-gray-500 hover:text-indigo-400 transition-colors">Edit goals →</a>
+    </div>
+    <div class="space-y-3">
+      {{ macro_row('Calories', totals.calories, goals.daily_calories, '', 'bg-indigo-500') }}
+      {{ macro_row('Protein',  totals.protein,  goals.daily_protein,  'g', 'bg-blue-500') }}
+      {{ macro_row('Carbs',    totals.carbs,    goals.daily_carbs,    'g', 'bg-yellow-500') }}
+      {{ macro_row('Fat',      totals.fat,      goals.daily_fat,      'g', 'bg-red-500') }}
+    </div>
+  </div>
+
+  {# Log meal action #}
+  <div class="mb-4">
+    <button type="button" onclick="document.getElementById('log-form').classList.toggle('hidden')"
+            class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm px-4 py-2 rounded transition-colors">
+      + Log a meal
+    </button>
+  </div>
+
+  <form method="POST" action="/log" id="log-form"
+        class="hidden bg-gray-900 border border-gray-800 rounded-lg p-4 mb-6 space-y-3">
+    <input type="hidden" name="date" value="{{ sel_date.isoformat() }}">
+
+    <div>
+      <label class="block text-xs text-gray-400 mb-1">Recipe</label>
+      <select name="recipe_id" required
+              class="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-indigo-500 transition-colors">
+        <option value="">— select recipe —</option>
+        {% for r in recipes %}
+        <option value="{{ r.id }}">{{ r.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="w-32">
+      <label class="block text-xs text-gray-400 mb-1">Servings</label>
+      <input type="number" name="servings" step="any" min="0.01" value="1" required
+             class="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-indigo-500 transition-colors">
+    </div>
+
+    <div class="flex gap-2">
+      <button type="submit"
+              class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm px-5 py-2 rounded transition-colors">
+        Log
+      </button>
+      <button type="button"
+              onclick="document.getElementById('log-form').classList.add('hidden')"
+              class="text-gray-400 hover:text-gray-200 text-sm px-4 py-2 rounded border border-gray-700 transition-colors">
+        Cancel
+      </button>
+    </div>
+  </form>
+
+  {# Meals list #}
+  {% if items %}
+  <h2 class="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">Logged Meals</h2>
+  <div class="space-y-2">
+    {% for item in items %}
+    {% set e = item.entry %}
+    {% set m = item.macros %}
+    <div class="bg-gray-900 border border-gray-800 rounded-lg p-3 flex justify-between items-center">
+      <div class="flex-1 min-w-0">
+        <div class="font-medium text-gray-100">
+          <a href="/recipes/{{ e.recipe.id }}" class="hover:text-indigo-400 transition-colors">
+            {{ e.recipe.name }}
+          </a>
+          <span class="text-gray-500 text-sm font-normal ml-1">×&nbsp;{{ e.servings | round(2) | float }}</span>
+        </div>
+        <div class="text-xs text-gray-400 mt-1 flex flex-wrap gap-x-3 gap-y-1">
+          <span>{{ m.calories | round(0) | int }} cal</span>
+          <span class="text-blue-400">{{ m.protein | round(1) }}g pro</span>
+          <span class="text-yellow-400">{{ m.carbs | round(1) }}g carbs</span>
+          <span class="text-red-400">{{ m.fat | round(1) }}g fat</span>
+        </div>
+      </div>
+      <form method="POST" action="/log/{{ e.id }}/delete"
+            onsubmit="return confirm('Remove this entry?')" class="ml-3">
+        <button type="submit"
+                class="text-gray-500 hover:text-red-400 text-xl leading-none px-2 transition-colors">×</button>
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="text-center py-12 text-gray-500">
+    <p class="mb-2">Nothing logged for this day.</p>
+    {% if not recipes %}
+    <p class="text-sm">
+      Add some <a href="/recipes/new" class="text-indigo-400 hover:text-indigo-300">recipes</a> first.
+    </p>
+    {% endif %}
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}
