@@ -24,8 +24,10 @@ def create_app(config_name=None):
 
     from app.blueprints.main import main_bp
     from app.blueprints.ingredients import ingredients_bp
+    from app.blueprints.recipes import recipes_bp
     app.register_blueprint(main_bp)
     app.register_blueprint(ingredients_bp)
+    app.register_blueprint(recipes_bp)
 
     @app.context_processor
     def inject_globals():

@@ -1,0 +1,265 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit' if recipe else 'New' }} Recipe — {{ config.APP_NAME }}{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+  <div class="flex items-center gap-4 mb-6">
+    <a href="/recipes" class="text-gray-500 hover:text-gray-300 text-sm transition-colors">← Recipes</a>
+    <h1 class="text-2xl font-semibold">{{ 'Edit' if recipe else 'New' }} Recipe</h1>
+  </div>
+
+  <form method="POST" id="recipe-form" class="space-y-5">
+
+    {# Basic fields #}
+    <div class="space-y-4">
+      <div>
+        <label class="block text-xs text-gray-400 mb-1">Name <span class="text-gray-600">*</span></label>
+        <input type="text" name="name" id="name"
+               value="{{ form.get('name', recipe.name if recipe else '') }}"
+               class="w-full bg-gray-800 border {{ 'border-red-500' if errors.name else 'border-gray-700' }} rounded px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-indigo-500 transition-colors"
+               required autofocus>
+        {% if errors.name %}<p class="mt-1 text-xs text-red-400">{{ errors.name }}</p>{% endif %}
+      </div>
+
+      <div>
+        <label class="block text-xs text-gray-400 mb-1">Description <span class="text-gray-600">optional</span></label>
+        <input type="text" name="description"
+               value="{{ form.get('description', recipe.description if recipe and recipe.description else '') }}"
+               class="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-indigo-500 transition-colors">
+      </div>
+
+      <div class="w-40">
+        <label class="block text-xs text-gray-400 mb-1">Total Servings <span class="text-gray-600">*</span></label>
+        <input type="number" name="total_servings" id="total_servings" step="any" min="0.1"
+               value="{{ form.get('total_servings', recipe.total_servings if recipe else '1') }}"
+               class="w-full bg-gray-800 border {{ 'border-red-500' if errors.total_servings else 'border-gray-700' }} rounded px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-indigo-500 transition-colors"
+               required>
+        {% if errors.total_servings %}<p class="mt-1 text-xs text-red-400">{{ errors.total_servings }}</p>{% endif %}
+      </div>
+    </div>
+
+    {# Ingredient rows #}
+    <div class="border-t border-gray-800 pt-5">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-sm font-semibold text-gray-300">Ingredients</h2>
+        <div class="flex gap-2">
+          <button type="button" onclick="addRow('ingredient')"
+                  class="text-xs bg-gray-700 hover:bg-gray-600 text-gray-200 px-3 py-1.5 rounded transition-colors">
+            + Ingredient
+          </button>
+          <button type="button" onclick="addRow('subrecipe')"
+                  class="text-xs bg-gray-700 hover:bg-gray-600 text-gray-200 px-3 py-1.5 rounded transition-colors">
+            + Sub-recipe
+          </button>
+        </div>
+      </div>
+
+      <div id="rows-container" class="space-y-2"></div>
+
+      <div id="no-rows-msg" class="text-sm text-gray-600 py-3 text-center hidden">
+        No ingredients added yet.
+      </div>
+    </div>
+
+    {# Live macro preview #}
+    <div class="border-t border-gray-800 pt-4">
+      <p class="text-xs text-gray-500 mb-3 uppercase tracking-wide">Macro Preview</p>
+      <div class="grid grid-cols-2 gap-4">
+        <div class="bg-gray-900 border border-gray-800 rounded-lg p-3">
+          <p class="text-xs text-gray-500 mb-2">Total (full recipe)</p>
+          <div class="space-y-1 text-sm">
+            <div class="flex justify-between"><span class="text-gray-400">Calories</span><span id="p-total-cal" class="text-gray-100">0</span></div>
+            <div class="flex justify-between"><span class="text-gray-400">Protein</span><span id="p-total-pro" class="text-blue-400">0g</span></div>
+            <div class="flex justify-between"><span class="text-gray-400">Carbs</span><span id="p-total-carb" class="text-yellow-400">0g</span></div>
+            <div class="flex justify-between"><span class="text-gray-400">Fat</span><span id="p-total-fat" class="text-red-400">0g</span></div>
+          </div>
+        </div>
+        <div class="bg-gray-900 border border-gray-800 rounded-lg p-3">
+          <p class="text-xs text-gray-500 mb-2">Per serving</p>
+          <div class="space-y-1 text-sm">
+            <div class="flex justify-between"><span class="text-gray-400">Calories</span><span id="p-ps-cal" class="text-gray-100">0</span></div>
+            <div class="flex justify-between"><span class="text-gray-400">Protein</span><span id="p-ps-pro" class="text-blue-400">0g</span></div>
+            <div class="flex justify-between"><span class="text-gray-400">Carbs</span><span id="p-ps-carb" class="text-yellow-400">0g</span></div>
+            <div class="flex justify-between"><span class="text-gray-400">Fat</span><span id="p-ps-fat" class="text-red-400">0g</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {# Instructions #}
+    <div class="border-t border-gray-800 pt-4">
+      <label class="block text-xs text-gray-400 mb-1">Instructions <span class="text-gray-600">optional</span></label>
+      <textarea name="instructions" rows="5"
+                class="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-indigo-500 transition-colors resize-y">{{ form.get('instructions', recipe.instructions if recipe and recipe.instructions else '') }}</textarea>
+    </div>
+
+    <div class="flex gap-3 pt-1">
+      <button type="submit"
+              class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm px-6 py-2 rounded transition-colors">
+        {{ 'Save Changes' if recipe else 'Create Recipe' }}
+      </button>
+      <a href="{{ '/recipes/' ~ recipe.id if recipe else '/recipes' }}"
+         class="text-gray-400 hover:text-gray-200 text-sm px-4 py-2 rounded border border-gray-700 transition-colors">
+        Cancel
+      </a>
+    </div>
+
+  </form>
+</div>
+
+<script>
+const INGREDIENTS = {{ ingredients_json | safe }};
+const RECIPES = {{ recipes_json | safe }};
+const INITIAL_ITEMS = {{ initial_items | tojson }};
+
+const INPUT_CLS = "bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-100 focus:outline-none focus:border-indigo-500 transition-colors";
+
+function makeIngOptions(selectedId) {
+  let html = '<option value="">— ingredient —</option>';
+  Object.entries(INGREDIENTS).forEach(([id, ing]) => {
+    const label = ing.name + (ing.brand ? ` (${ing.brand})` : '');
+    html += `<option value="${id}" ${parseInt(id) === selectedId ? 'selected' : ''}>${label}</option>`;
+  });
+  return html;
+}
+
+function makeRecOptions(selectedId) {
+  let html = '<option value="">— sub-recipe —</option>';
+  Object.entries(RECIPES).forEach(([id, rec]) => {
+    html += `<option value="${id}" ${parseInt(id) === selectedId ? 'selected' : ''}>${rec.name}</option>`;
+  });
+  return html;
+}
+
+function addRow(type = 'ingredient', refId = null, quantity = '', unit = '') {
+  const container = document.getElementById('rows-container');
+  const div = document.createElement('div');
+  div.className = 'ingredient-row flex gap-2 items-center';
+
+  const refOptions = type === 'ingredient' ? makeIngOptions(refId) : makeRecOptions(refId);
+
+  div.innerHTML = `
+    <select name="item_type" class="row-type ${INPUT_CLS} w-32 flex-shrink-0">
+      <option value="ingredient" ${type === 'ingredient' ? 'selected' : ''}>Ingredient</option>
+      <option value="subrecipe" ${type === 'subrecipe' ? 'selected' : ''}>Sub-recipe</option>
+    </select>
+    <select name="item_ref_id" class="row-ref ${INPUT_CLS} flex-1 min-w-0">
+      ${refOptions}
+    </select>
+    <input type="number" name="item_quantity" class="row-qty ${INPUT_CLS} w-20 flex-shrink-0"
+           value="${quantity}" step="any" min="0" placeholder="Qty">
+    <input type="text" name="item_unit" class="row-unit ${INPUT_CLS} w-16 flex-shrink-0 text-gray-400"
+           value="${unit}" placeholder="unit" readonly>
+    <button type="button" onclick="removeRow(this)"
+            class="text-gray-500 hover:text-red-400 text-lg leading-none px-1 flex-shrink-0 transition-colors">×</button>
+  `;
+
+  container.appendChild(div);
+
+  div.querySelector('.row-type').addEventListener('change', function() { onTypeChange(this); });
+  div.querySelector('.row-ref').addEventListener('change', function() { onRefChange(this); });
+  div.querySelector('.row-qty').addEventListener('input', recalculate);
+
+  // Auto-fill unit if ref is already selected
+  if (refId && !unit) {
+    const refSel = div.querySelector('.row-ref');
+    refSel.value = String(refId);
+    autoFillUnit(div, type, refId);
+  }
+
+  updateNoRowsMsg();
+  recalculate();
+}
+
+function onTypeChange(select) {
+  const row = select.closest('.ingredient-row');
+  const refSel = row.querySelector('.row-ref');
+  refSel.innerHTML = select.value === 'ingredient' ? makeIngOptions(null) : makeRecOptions(null);
+  row.querySelector('.row-unit').value = '';
+  recalculate();
+}
+
+function onRefChange(select) {
+  const row = select.closest('.ingredient-row');
+  const type = row.querySelector('.row-type').value;
+  const id = parseInt(select.value);
+  autoFillUnit(row, type, id);
+  recalculate();
+}
+
+function autoFillUnit(row, type, id) {
+  const unitInput = row.querySelector('.row-unit');
+  if (type === 'ingredient' && INGREDIENTS[id]) {
+    unitInput.value = INGREDIENTS[id].servingUnit;
+  } else if (type === 'subrecipe' && RECIPES[id]) {
+    unitInput.value = 'serving';
+  } else {
+    unitInput.value = '';
+  }
+}
+
+function removeRow(btn) {
+  btn.closest('.ingredient-row').remove();
+  updateNoRowsMsg();
+  recalculate();
+}
+
+function updateNoRowsMsg() {
+  const hasRows = document.querySelectorAll('.ingredient-row').length > 0;
+  document.getElementById('no-rows-msg').classList.toggle('hidden', hasRows);
+}
+
+function recalculate() {
+  const totalServings = parseFloat(document.getElementById('total_servings').value) || 1;
+  const totals = { calories: 0, protein: 0, carbs: 0, fat: 0 };
+
+  document.querySelectorAll('.ingredient-row').forEach(row => {
+    const type = row.querySelector('.row-type').value;
+    const id = parseInt(row.querySelector('.row-ref').value);
+    const qty = parseFloat(row.querySelector('.row-qty').value) || 0;
+    if (!id || !qty) return;
+
+    if (type === 'ingredient' && INGREDIENTS[id]) {
+      const ing = INGREDIENTS[id];
+      const scale = qty / ing.servingSize;
+      totals.calories += ing.calories * scale;
+      totals.protein  += ing.protein  * scale;
+      totals.carbs    += ing.carbs    * scale;
+      totals.fat      += ing.fat      * scale;
+    } else if (type === 'subrecipe' && RECIPES[id]) {
+      const rec = RECIPES[id];
+      const scale = qty / rec.totalServings;
+      totals.calories += rec.totalMacros.calories * scale;
+      totals.protein  += rec.totalMacros.protein  * scale;
+      totals.carbs    += rec.totalMacros.carbs    * scale;
+      totals.fat      += rec.totalMacros.fat      * scale;
+    }
+  });
+
+  const fmt1 = n => n.toFixed(1);
+  const fmtCal = n => Math.round(n).toString();
+  const ps = k => totals[k] / totalServings;
+
+  document.getElementById('p-total-cal').textContent  = fmtCal(totals.calories);
+  document.getElementById('p-total-pro').textContent  = fmt1(totals.protein) + 'g';
+  document.getElementById('p-total-carb').textContent = fmt1(totals.carbs) + 'g';
+  document.getElementById('p-total-fat').textContent  = fmt1(totals.fat) + 'g';
+  document.getElementById('p-ps-cal').textContent     = fmtCal(ps('calories'));
+  document.getElementById('p-ps-pro').textContent     = fmt1(ps('protein')) + 'g';
+  document.getElementById('p-ps-carb').textContent    = fmt1(ps('carbs')) + 'g';
+  document.getElementById('p-ps-fat').textContent     = fmt1(ps('fat')) + 'g';
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('total_servings').addEventListener('input', recalculate);
+
+  if (INITIAL_ITEMS.length > 0) {
+    INITIAL_ITEMS.forEach(item => {
+      addRow(item.type, item.refId, item.quantity, item.unit);
+    });
+  } else {
+    addRow('ingredient');
+  }
+});
+</script>
+{% endblock %}

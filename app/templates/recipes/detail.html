@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% block title %}{{ recipe.name }} — {{ config.APP_NAME }}{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto">
+
+  <div class="flex items-start justify-between mb-6">
+    <div>
+      <a href="/recipes" class="text-gray-500 hover:text-gray-300 text-sm transition-colors">← Recipes</a>
+      <h1 class="text-2xl font-semibold mt-1">{{ recipe.name }}</h1>
+      {% if recipe.description %}
+      <p class="text-gray-400 mt-1">{{ recipe.description }}</p>
+      {% endif %}
+    </div>
+    <div class="flex gap-2 mt-1">
+      <a href="/recipes/{{ recipe.id }}/edit"
+         class="bg-gray-700 hover:bg-gray-600 text-sm px-4 py-2 rounded text-gray-200 transition-colors">Edit</a>
+      <form method="POST" action="/recipes/{{ recipe.id }}/delete"
+            onsubmit="return confirm('Delete \'{{ recipe.name }}\'?')">
+        <button type="submit"
+                class="bg-gray-700 hover:bg-red-900 text-sm px-4 py-2 rounded text-gray-400 hover:text-red-300 transition-colors">
+          Delete
+        </button>
+      </form>
+    </div>
+  </div>
+
+  {# Macro summary cards #}
+  <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+    {% set cards = [
+      ('Calories', per_serving.calories, '', 'text-gray-100'),
+      ('Protein', per_serving.protein, 'g', 'text-blue-400'),
+      ('Carbs', per_serving.carbs, 'g', 'text-yellow-400'),
+      ('Fat', per_serving.fat, 'g', 'text-red-400'),
+    ] %}
+    {% for label, val, unit, color in cards %}
+    <div class="bg-gray-900 border border-gray-800 rounded-lg px-4 py-3 text-center">
+      <div class="text-xs text-gray-500 mb-1">{{ label }} / serving</div>
+      <div class="text-xl font-semibold {{ color }}">
+        {{ val | round(1) | int if val | round(1) == val | round(0) | int else val | round(1) }}{{ unit }}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-8 text-center text-sm text-gray-400">
+    <div class="bg-gray-900 border border-gray-800 rounded px-3 py-2">
+      <span class="text-gray-500 text-xs">Servings</span><br>
+      <span class="text-gray-200">{{ recipe.total_servings | int if recipe.total_servings == recipe.total_servings | int else recipe.total_servings }}</span>
+    </div>
+    {% if per_serving.fiber %}
+    <div class="bg-gray-900 border border-gray-800 rounded px-3 py-2">
+      <span class="text-gray-500 text-xs">Fiber / serving</span><br>
+      <span class="text-gray-200">{{ per_serving.fiber | round(1) }}g</span>
+    </div>
+    {% endif %}
+    {% if per_serving.sugar %}
+    <div class="bg-gray-900 border border-gray-800 rounded px-3 py-2">
+      <span class="text-gray-500 text-xs">Sugar / serving</span><br>
+      <span class="text-gray-200">{{ per_serving.sugar | round(1) }}g</span>
+    </div>
+    {% endif %}
+  </div>
+
+  {# Ingredient breakdown #}
+  {% if recipe.recipe_ingredients %}
+  <div class="mb-8">
+    <h2 class="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">Ingredients</h2>
+    <div class="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
+      <table class="w-full text-sm">
+        <thead class="bg-gray-800 text-gray-500 text-xs uppercase">
+          <tr>
+            <th class="text-left px-4 py-2">Item</th>
+            <th class="text-right px-4 py-2">Quantity</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-800">
+          {% for ri in recipe.recipe_ingredients %}
+          <tr>
+            <td class="px-4 py-3">
+              {% if ri.ingredient %}
+              <a href="/ingredients" class="text-gray-200 hover:text-indigo-400 transition-colors">
+                {{ ri.ingredient.name }}
+                {% if ri.ingredient.brand %}
+                <span class="text-gray-500 text-xs">({{ ri.ingredient.brand }})</span>
+                {% endif %}
+              </a>
+              {% elif ri.sub_recipe %}
+              <a href="/recipes/{{ ri.sub_recipe.id }}" class="text-indigo-300 hover:text-indigo-200 transition-colors">
+                ↳ {{ ri.sub_recipe.name }}
+              </a>
+              <span class="text-gray-500 text-xs ml-1">sub-recipe</span>
+              {% endif %}
+            </td>
+            <td class="px-4 py-3 text-right text-gray-400">
+              {{ ri.quantity | int if ri.quantity == ri.quantity | int else ri.quantity }} {{ ri.unit }}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  {# Instructions #}
+  {% if recipe.instructions %}
+  <div>
+    <h2 class="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">Instructions</h2>
+    <div class="bg-gray-900 border border-gray-800 rounded-lg px-4 py-4 text-gray-300 text-sm whitespace-pre-wrap leading-relaxed">
+      {{ recipe.instructions }}
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

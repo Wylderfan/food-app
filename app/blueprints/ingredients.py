@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, request, render_template, redirect, url_for, flash
 from app import db
-from app.models import Ingredient
+from app.models import Ingredient, RecipeIngredient
 from app.utils.helpers import current_profile, _float
 
 ingredients_bp = Blueprint("ingredients", __name__)
@@ -50,6 +50,12 @@ def edit_ingredient(id):
 @ingredients_bp.route("/ingredients/<int:id>/delete", methods=["POST"])
 def delete_ingredient(id):
     ing = Ingredient.query.filter_by(id=id, profile_id=current_profile()).first_or_404()
+    used_in = RecipeIngredient.query.filter_by(ingredient_id=id).first()
+    if used_in:
+        from app.models import Recipe
+        parent = Recipe.query.get(used_in.recipe_id)
+        flash(f"Cannot delete — '{ing.name}' is used in recipe '{parent.name}'.", "error")
+        return redirect(url_for("ingredients.list_ingredients"))
     name = ing.name
     db.session.delete(ing)
     db.session.commit()
@@ -122,6 +128,11 @@ def api_update(id):
 @ingredients_bp.route("/api/ingredients/<int:id>", methods=["DELETE"])
 def api_delete(id):
     ing = Ingredient.query.filter_by(id=id, profile_id=current_profile()).first_or_404()
+    used_in = RecipeIngredient.query.filter_by(ingredient_id=id).first()
+    if used_in:
+        from app.models import Recipe
+        parent = Recipe.query.get(used_in.recipe_id)
+        return jsonify({"error": f"Used in recipe '{parent.name}'"}), 409
     db.session.delete(ing)
     db.session.commit()
     return jsonify({"deleted": id})

@@ -36,3 +36,48 @@ class Ingredient(db.Model):
             "createdAt": self.created_at.isoformat(),
             "updatedAt": self.updated_at.isoformat(),
         }
+
+
+class Recipe(db.Model):
+    __tablename__ = "recipes"
+
+    id = db.Column(db.Integer, primary_key=True)
+    profile_id = db.Column(db.String(100), nullable=False)
+    name = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text)
+    total_servings = db.Column(db.Float, nullable=False)
+    instructions = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    recipe_ingredients = db.relationship(
+        "RecipeIngredient",
+        foreign_keys="[RecipeIngredient.recipe_id]",
+        cascade="all, delete-orphan",
+        lazy="select",
+    )
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "description": self.description,
+            "totalServings": self.total_servings,
+            "instructions": self.instructions,
+            "createdAt": self.created_at.isoformat(),
+            "updatedAt": self.updated_at.isoformat(),
+        }
+
+
+class RecipeIngredient(db.Model):
+    __tablename__ = "recipe_ingredients"
+
+    id = db.Column(db.Integer, primary_key=True)
+    recipe_id = db.Column(db.Integer, db.ForeignKey("recipes.id"), nullable=False)
+    ingredient_id = db.Column(db.Integer, db.ForeignKey("ingredients.id"), nullable=True)
+    sub_recipe_id = db.Column(db.Integer, db.ForeignKey("recipes.id"), nullable=True)
+    quantity = db.Column(db.Float, nullable=False)
+    unit = db.Column(db.String(50), nullable=False)
+
+    ingredient = db.relationship("Ingredient")
+    sub_recipe = db.relationship("Recipe", foreign_keys="[RecipeIngredient.sub_recipe_id]")
