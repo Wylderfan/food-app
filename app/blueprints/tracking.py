@@ -4,6 +4,7 @@ from app import db
 from app.models import Recipe, DailyLogEntry, UserGoals
 from app.utils.helpers import current_profile, _float
 from app.utils.macros import calculate_recipe_macros
+from app.utils.inventory import apply_recipe_to_inventory
 
 tracking_bp = Blueprint("tracking", __name__)
 
@@ -98,6 +99,7 @@ def log_meal():
         recipe_id=recipe_id, servings=servings,
     )
     db.session.add(entry)
+    apply_recipe_to_inventory(profile, recipe, servings, deduct=True)
     db.session.commit()
     flash(f"Logged {servings:g} × {recipe.name}.", "success")
     return redirect(url_for("tracking.daily_log", date=sel_date.isoformat()))
@@ -105,8 +107,11 @@ def log_meal():
 
 @tracking_bp.route("/log/<int:id>/delete", methods=["POST"])
 def delete_log(id):
-    entry = DailyLogEntry.query.filter_by(id=id, profile_id=current_profile()).first_or_404()
+    profile = current_profile()
+    entry = DailyLogEntry.query.filter_by(id=id, profile_id=profile).first_or_404()
     sel_date = entry.date
+    if entry.recipe:
+        apply_recipe_to_inventory(profile, entry.recipe, entry.servings, deduct=False)
     db.session.delete(entry)
     db.session.commit()
     flash("Log entry removed.", "success")
@@ -194,13 +199,17 @@ def api_log_meal():
         recipe_id=recipe_id, servings=servings,
     )
     db.session.add(entry)
+    apply_recipe_to_inventory(profile, recipe, servings, deduct=True)
     db.session.commit()
     return jsonify(entry.to_dict(macros=_entry_macros(entry))), 201
 
 
 @tracking_bp.route("/api/log/<int:id>", methods=["DELETE"])
 def api_delete_log(id):
-    entry = DailyLogEntry.query.filter_by(id=id, profile_id=current_profile()).first_or_404()
+    profile = current_profile()
+    entry = DailyLogEntry.query.filter_by(id=id, profile_id=profile).first_or_404()
+    if entry.recipe:
+        apply_recipe_to_inventory(profile, entry.recipe, entry.servings, deduct=False)
     db.session.delete(entry)
     db.session.commit()
     return jsonify({"deleted": id})

@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% block title %}Inventory — {{ config.APP_NAME }}{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+
+  <div class="flex items-center justify-between mb-6">
+    <h1 class="text-2xl font-semibold">Inventory</h1>
+    {% if ingredients %}
+    <button type="button"
+            onclick="document.getElementById('add-form').classList.toggle('hidden')"
+            class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm px-4 py-2 rounded transition-colors">
+      + Add Stock
+    </button>
+    {% endif %}
+  </div>
+
+  {# Add stock form #}
+  {% if ingredients %}
+  <form method="POST" action="/inventory/add" id="add-form"
+        class="hidden bg-gray-900 border border-gray-800 rounded-lg p-4 mb-6 flex flex-wrap items-end gap-3">
+    <div class="flex-1 min-w-48">
+      <label class="block text-xs text-gray-400 mb-1">Ingredient</label>
+      <select name="ingredient_id" required
+              class="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-indigo-500 transition-colors">
+        <option value="">— select —</option>
+        {% for ing in ingredients %}
+        <option value="{{ ing.id }}" data-unit="{{ ing.serving_unit }}">
+          {{ ing.name }}{% if ing.brand %} ({{ ing.brand }}){% endif %}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="w-32">
+      <label class="block text-xs text-gray-400 mb-1">Quantity</label>
+      <input type="number" name="quantity" step="any" min="0.001" required
+             class="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-indigo-500 transition-colors">
+    </div>
+    <button type="submit"
+            class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm px-5 py-2 rounded transition-colors">
+      Add
+    </button>
+    <button type="button"
+            onclick="document.getElementById('add-form').classList.add('hidden')"
+            class="text-gray-400 hover:text-gray-200 text-sm px-4 py-2 rounded border border-gray-700 transition-colors">
+      Cancel
+    </button>
+  </form>
+  {% endif %}
+
+  {% if items %}
+  {# Header row #}
+  <div class="hidden sm:grid grid-cols-[1fr_8rem_8rem_auto] gap-3 px-4 py-2 text-xs text-gray-500 uppercase tracking-wide">
+    <div>Ingredient</div>
+    <div class="text-right">On hand</div>
+    <div class="text-right">Low at</div>
+    <div></div>
+  </div>
+
+  <div class="space-y-2">
+    {% for item in items %}
+    {% set unit = item.ingredient.serving_unit %}
+    <form method="POST" action="/inventory/{{ item.ingredient_id }}/set"
+          class="grid grid-cols-[1fr_8rem_8rem_auto] gap-3 items-center px-4 py-3 rounded-lg border
+                 {% if item.is_low_stock %}bg-yellow-900/10 border-yellow-700/40{% else %}bg-gray-900 border-gray-800{% endif %}">
+
+      <div class="min-w-0">
+        <div class="font-medium text-gray-100 truncate">{{ item.ingredient.name }}</div>
+        {% if item.ingredient.brand %}
+        <div class="text-xs text-gray-500 truncate">{{ item.ingredient.brand }}</div>
+        {% endif %}
+        {% if item.is_low_stock %}
+        <div class="text-xs text-yellow-400 mt-0.5">
+          {% if item.quantity_on_hand < 0 %}Negative — used more than tracked{% else %}Low stock{% endif %}
+        </div>
+        {% endif %}
+      </div>
+
+      <div class="flex items-center gap-1 justify-end">
+        <input type="number" name="quantity_on_hand" step="any"
+               value="{{ item.quantity_on_hand }}"
+               class="w-20 bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm text-right text-gray-100 focus:outline-none focus:border-indigo-500 transition-colors">
+        <span class="text-xs text-gray-500 w-8">{{ unit }}</span>
+      </div>
+
+      <div class="flex items-center gap-1 justify-end">
+        <input type="number" name="low_stock_threshold" step="any" min="0"
+               value="{{ item.low_stock_threshold }}"
+               class="w-20 bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm text-right text-gray-100 focus:outline-none focus:border-indigo-500 transition-colors">
+        <span class="text-xs text-gray-500 w-8">{{ unit }}</span>
+      </div>
+
+      <button type="submit"
+              class="text-xs bg-gray-700 hover:bg-gray-600 text-gray-200 px-3 py-1.5 rounded transition-colors">
+        Save
+      </button>
+    </form>
+    {% endfor %}
+  </div>
+
+  <p class="mt-3 text-xs text-gray-500">
+    {{ items | length }} item{{ 's' if items | length != 1 }}.
+    {% set low_n = items | selectattr('is_low_stock') | list | length %}
+    {% if low_n %}<span class="text-yellow-400">{{ low_n }} low.</span>{% endif %}
+  </p>
+  {% else %}
+  <div class="text-center py-16 text-gray-500">
+    {% if not ingredients %}
+    <p class="text-lg mb-2">No ingredients yet.</p>
+    <p class="text-sm">
+      <a href="/ingredients/new" class="text-indigo-400 hover:text-indigo-300">Add an ingredient</a> first.
+    </p>
+    {% else %}
+    <p class="text-lg mb-2">Nothing tracked yet.</p>
+    <p class="text-sm">Add stock above, or log a meal — items get created automatically.</p>
+    {% endif %}
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

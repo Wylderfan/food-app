@@ -103,6 +103,11 @@ def delete_recipe(id):
         return redirect(url_for("recipes.view_recipe", id=id))
     name = recipe.name
     log_count = DailyLogEntry.query.filter_by(recipe_id=id).count()
+    # NOTE: cascade-deleting log entries here does NOT restore the inventory
+    # those entries deducted. Per-entry deletes (tracking.delete_log) do
+    # restore. Decide if recipe deletion should also restore — would mean
+    # iterating entries before delete and calling apply_recipe_to_inventory
+    # with deduct=False on each.
     db.session.delete(recipe)
     db.session.commit()
     msg = f"'{name}' deleted."

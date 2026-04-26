@@ -20,6 +20,13 @@ class Ingredient(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+    inventory_items = db.relationship(
+        "InventoryItem",
+        backref="ingredient",
+        cascade="all, delete-orphan",
+        lazy="select",
+    )
+
     def to_dict(self):
         return {
             "id": self.id,
@@ -134,3 +141,34 @@ class DailyLogEntry(db.Model):
         if macros is not None:
             d["macros"] = macros
         return d
+
+
+class InventoryItem(db.Model):
+    __tablename__ = "inventory_items"
+
+    id = db.Column(db.Integer, primary_key=True)
+    profile_id = db.Column(db.String(100), nullable=False)
+    ingredient_id = db.Column(db.Integer, db.ForeignKey("ingredients.id"), nullable=False)
+    quantity_on_hand = db.Column(db.Float, nullable=False, default=0)
+    low_stock_threshold = db.Column(db.Float, nullable=False, default=0)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (
+        db.UniqueConstraint("profile_id", "ingredient_id", name="uq_inv_profile_ingredient"),
+    )
+
+    @property
+    def is_low_stock(self):
+        return self.quantity_on_hand <= self.low_stock_threshold
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "ingredientId": self.ingredient_id,
+            "ingredientName": self.ingredient.name if self.ingredient else None,
+            "unit": self.ingredient.serving_unit if self.ingredient else None,
+            "quantityOnHand": self.quantity_on_hand,
+            "lowStockThreshold": self.low_stock_threshold,
+            "lowStock": self.is_low_stock,
+            "updatedAt": self.updated_at.isoformat(),
+        }
