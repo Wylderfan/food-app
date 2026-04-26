@@ -50,22 +50,23 @@
 
   {% if items %}
   {# Header row #}
-  <div class="hidden sm:grid grid-cols-[1fr_8rem_8rem_auto] gap-3 px-4 py-2 text-xs text-gray-500 uppercase tracking-wide">
+  <div class="hidden sm:grid grid-cols-[1fr_8rem_8rem] gap-3 px-4 py-2 text-xs text-gray-500 uppercase tracking-wide">
     <div>Ingredient</div>
     <div class="text-right">On hand</div>
     <div class="text-right">Low at</div>
-    <div></div>
   </div>
 
   <div class="space-y-2">
     {% for item in items %}
     {% set unit = item.ingredient.serving_unit %}
-    <form method="POST" action="/inventory/{{ item.ingredient_id }}/set"
-          class="grid grid-cols-[1fr_8rem_8rem_auto] gap-3 items-center px-4 py-3 rounded-lg border
-                 {% if item.is_low_stock %}bg-yellow-900/10 border-yellow-700/40{% else %}bg-gray-900 border-gray-800{% endif %}">
+    <div class="grid grid-cols-[1fr_8rem_8rem] gap-3 items-center px-4 py-3 rounded-lg border
+                {% if item.is_low_stock %}bg-yellow-900/10 border-yellow-700/40{% else %}bg-gray-900 border-gray-800{% endif %}">
 
       <div class="min-w-0">
-        <div class="font-medium text-gray-100 truncate">{{ item.ingredient.name }}</div>
+        <a href="/ingredients/{{ item.ingredient_id }}/edit"
+           class="font-medium text-gray-100 hover:text-indigo-300 transition-colors truncate block">
+          {{ item.ingredient.name }}
+        </a>
         {% if item.ingredient.brand %}
         <div class="text-xs text-gray-500 truncate">{{ item.ingredient.brand }}</div>
         {% endif %}
@@ -76,25 +77,16 @@
         {% endif %}
       </div>
 
-      <div class="flex items-center gap-1 justify-end">
-        <input type="number" name="quantity_on_hand" step="any"
-               value="{{ item.quantity_on_hand }}"
-               class="w-20 bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm text-right text-gray-100 focus:outline-none focus:border-indigo-500 transition-colors">
-        <span class="text-xs text-gray-500 w-8">{{ unit }}</span>
+      <div class="text-right text-sm text-gray-200">
+        {{ "%g" | format(item.quantity_on_hand) }}
+        <span class="text-xs text-gray-500 ml-1">{{ unit }}</span>
       </div>
 
-      <div class="flex items-center gap-1 justify-end">
-        <input type="number" name="low_stock_threshold" step="any" min="0"
-               value="{{ item.low_stock_threshold }}"
-               class="w-20 bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm text-right text-gray-100 focus:outline-none focus:border-indigo-500 transition-colors">
-        <span class="text-xs text-gray-500 w-8">{{ unit }}</span>
+      <div class="text-right text-sm text-gray-200">
+        {{ "%g" | format(item.low_stock_threshold) }}
+        <span class="text-xs text-gray-500 ml-1">{{ unit }}</span>
       </div>
-
-      <button type="submit"
-              class="text-xs bg-gray-700 hover:bg-gray-600 text-gray-200 px-3 py-1.5 rounded transition-colors">
-        Save
-      </button>
-    </form>
+    </div>
     {% endfor %}
   </div>
 

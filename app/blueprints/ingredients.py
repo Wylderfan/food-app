@@ -2,6 +2,7 @@ from flask import Blueprint, jsonify, request, render_template, redirect, url_fo
 from app import db
 from app.models import Ingredient, RecipeIngredient
 from app.utils.helpers import _float
+from app.utils.inventory import get_or_create_item
 
 ingredients_bp = Blueprint("ingredients", __name__)
 
@@ -23,27 +24,43 @@ def new_ingredient():
     if request.method == "POST":
         errors = _validate_form(request.form)
         if errors:
-            return render_template("ingredients/form.html", errors=errors, ingredient=None, form=request.form)
+            return render_template("ingredients/form.html", errors=errors, ingredient=None,
+                                   form=request.form, inventory_qty=None)
         ing = _ingredient_from_form(request.form)
         db.session.add(ing)
+        db.session.flush()
+        qty = _float(request.form.get("quantity_on_hand"))
+        if qty is not None and qty != 0:
+            item = get_or_create_item(ing.id)
+            item.quantity_on_hand = qty
         db.session.commit()
         flash(f"'{ing.name}' added.", "success")
         return redirect(url_for("ingredients.list_ingredients"))
-    return render_template("ingredients/form.html", errors={}, ingredient=None, form={})
+    return render_template("ingredients/form.html", errors={}, ingredient=None,
+                           form={}, inventory_qty=None)
 
 
 @ingredients_bp.route("/ingredients/<int:id>/edit", methods=["GET", "POST"])
 def edit_ingredient(id):
     ing = Ingredient.query.get_or_404(id)
+    item = ing.inventory_items[0] if ing.inventory_items else None
     if request.method == "POST":
         errors = _validate_form(request.form)
         if errors:
-            return render_template("ingredients/form.html", errors=errors, ingredient=ing, form=request.form)
+            return render_template("ingredients/form.html", errors=errors, ingredient=ing,
+                                   form=request.form,
+                                   inventory_qty=item.quantity_on_hand if item else None)
         _apply_form(ing, request.form)
+        qty = _float(request.form.get("quantity_on_hand"))
+        if qty is not None:
+            item = get_or_create_item(ing.id)
+            item.quantity_on_hand = qty
         db.session.commit()
         flash(f"'{ing.name}' updated.", "success")
         return redirect(url_for("ingredients.list_ingredients"))
-    return render_template("ingredients/form.html", errors={}, ingredient=ing, form={})
+    return render_template("ingredients/form.html", errors={}, ingredient=ing,
+                           form={},
+                           inventory_qty=item.quantity_on_hand if item else None)
 
 
 # NOTE: PROJECT.md 1.3 — delete confirmation should preview which recipes
@@ -94,6 +111,7 @@ def api_create():
         fat=data.get("fat", 0),
         fiber=data.get("fiber"),
         sugar=data.get("sugar"),
+        low_stock_threshold=data.get("lowStockThreshold", 0) or 0,
     )
     db.session.add(ing)
     db.session.commit()
@@ -123,6 +141,8 @@ def api_update(id):
     ing.fat = data.get("fat", 0)
     ing.fiber = data.get("fiber")
     ing.sugar = data.get("sugar")
+    if "lowStockThreshold" in data:
+        ing.low_stock_threshold = data.get("lowStockThreshold") or 0
     db.session.commit()
     return jsonify(ing.to_dict())
 
@@ -153,7 +173,7 @@ def _validate_form(form):
         errors["serving_size"] = "Serving size must be greater than 0."
     if not form.get("serving_unit", "").strip():
         errors["serving_unit"] = "Serving unit is required."
-    for field in ["calories", "protein", "carbs", "fat", "fiber", "sugar"]:
+    for field in ["calories", "protein", "carbs", "fat", "fiber", "sugar", "low_stock_threshold"]:
         val = _float(form.get(field))
         if val is not None and val < 0:
             errors[field] = "Cannot be negative."
@@ -171,7 +191,7 @@ def _validate_data(data):
         errors["servingSize"] = "Serving size must be greater than 0."
     if not (data.get("servingUnit") or "").strip():
         errors["servingUnit"] = "Serving unit is required."
-    for field in ["calories", "protein", "carbs", "fat", "fiber", "sugar"]:
+    for field in ["calories", "protein", "carbs", "fat", "fiber", "sugar", "lowStockThreshold"]:
         val = data.get(field)
         if val is not None and (not isinstance(val, (int, float)) or val < 0):
             errors[field] = "Cannot be negative."
@@ -190,6 +210,7 @@ def _ingredient_from_form(form):
         fat=_float(form.get("fat")) or 0,
         fiber=_float(form.get("fiber")) if form.get("fiber") else None,
         sugar=_float(form.get("sugar")) if form.get("sugar") else None,
+        low_stock_threshold=_float(form.get("low_stock_threshold")) or 0,
     )
 
 
@@ -204,3 +225,4 @@ def _apply_form(ing, form):
     ing.fat = _float(form.get("fat")) or 0
     ing.fiber = _float(form.get("fiber")) if form.get("fiber") else None
     ing.sugar = _float(form.get("sugar")) if form.get("sugar") else None
+    ing.low_stock_threshold = _float(form.get("low_stock_threshold")) or 0

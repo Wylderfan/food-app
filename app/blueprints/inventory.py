@@ -20,29 +20,6 @@ def list_inventory():
     return render_template("inventory/list.html", items=items, ingredients=ingredients)
 
 
-@inventory_bp.route("/inventory/<int:ingredient_id>/set", methods=["POST"])
-def set_inventory(ingredient_id):
-    ing = Ingredient.query.get_or_404(ingredient_id)
-
-    qty = _float(request.form.get("quantity_on_hand"))
-    threshold = _float(request.form.get("low_stock_threshold"))
-
-    if qty is None:
-        flash("Quantity is required.", "error")
-        return redirect(url_for("inventory.list_inventory"))
-    if threshold is not None and threshold < 0:
-        flash("Threshold cannot be negative.", "error")
-        return redirect(url_for("inventory.list_inventory"))
-
-    item = get_or_create_item(ingredient_id)
-    item.quantity_on_hand = qty
-    if threshold is not None:
-        item.low_stock_threshold = threshold
-    db.session.commit()
-    flash(f"Updated '{ing.name}'.", "success")
-    return redirect(url_for("inventory.list_inventory"))
-
-
 @inventory_bp.route("/inventory/add", methods=["POST"])
 def add_stock():
     ingredient_id = request.form.get("ingredient_id", type=int)
@@ -78,7 +55,7 @@ def api_list():
 
 @inventory_bp.route("/api/inventory/<int:ingredient_id>", methods=["PUT"])
 def api_set(ingredient_id):
-    Ingredient.query.get_or_404(ingredient_id)
+    ing = Ingredient.query.get_or_404(ingredient_id)
     data = request.get_json() or {}
 
     errors = {}
@@ -99,7 +76,7 @@ def api_set(ingredient_id):
     if qty is not None:
         item.quantity_on_hand = qty
     if threshold is not None:
-        item.low_stock_threshold = threshold
+        ing.low_stock_threshold = threshold
     db.session.commit()
     return jsonify(item.to_dict())
 

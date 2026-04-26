@@ -16,6 +16,7 @@ class Ingredient(db.Model):
     fat = db.Column(db.Float, nullable=False, default=0)
     fiber = db.Column(db.Float)
     sugar = db.Column(db.Float)
+    low_stock_threshold = db.Column(db.Float, nullable=False, default=0)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -39,6 +40,7 @@ class Ingredient(db.Model):
             "fat": self.fat,
             "fiber": self.fiber,
             "sugar": self.sugar,
+            "lowStockThreshold": self.low_stock_threshold,
             "createdAt": self.created_at.isoformat(),
             "updatedAt": self.updated_at.isoformat(),
         }
@@ -147,8 +149,11 @@ class InventoryItem(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     ingredient_id = db.Column(db.Integer, db.ForeignKey("ingredients.id"), nullable=False, unique=True)
     quantity_on_hand = db.Column(db.Float, nullable=False, default=0)
-    low_stock_threshold = db.Column(db.Float, nullable=False, default=0)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    @property
+    def low_stock_threshold(self):
+        return self.ingredient.low_stock_threshold if self.ingredient else 0
 
     @property
     def is_low_stock(self):

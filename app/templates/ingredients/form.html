@@ -117,6 +117,32 @@
       </div>
     </div>
 
+    <div class="border-t border-gray-800 pt-4">
+      <p class="text-xs text-gray-500 mb-4">Inventory</p>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">
+            Quantity on hand
+            <span class="text-gray-600">in serving units</span>
+          </label>
+          <input type="number" name="quantity_on_hand" step="any"
+                 value="{{ form.get('quantity_on_hand', inventory_qty if inventory_qty is not none else '0') }}"
+                 class="w-full bg-gray-800 border {{ 'border-red-500' if errors.quantity_on_hand else 'border-gray-700' }} rounded px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-indigo-500 transition-colors">
+          {% if errors.quantity_on_hand %}<p class="mt-1 text-xs text-red-400">{{ errors.quantity_on_hand }}</p>{% endif %}
+        </div>
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">
+            Low-stock alert at
+            <span class="text-gray-600">0 = no alert</span>
+          </label>
+          <input type="number" name="low_stock_threshold" step="any" min="0"
+                 value="{{ form.get('low_stock_threshold', ingredient.low_stock_threshold if ingredient else '0') }}"
+                 class="w-full bg-gray-800 border {{ 'border-red-500' if errors.low_stock_threshold else 'border-gray-700' }} rounded px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-indigo-500 transition-colors">
+          {% if errors.low_stock_threshold %}<p class="mt-1 text-xs text-red-400">{{ errors.low_stock_threshold }}</p>{% endif %}
+        </div>
+      </div>
+    </div>
+
     <div class="flex gap-3 pt-1">
       <button type="submit"
               class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm px-6 py-2 rounded transition-colors">
