@@ -47,6 +47,10 @@ def edit_ingredient(id):
     return render_template("ingredients/form.html", errors={}, ingredient=ing, form={})
 
 
+# NOTE: PROJECT.md 1.3 — delete confirmation should preview which recipes
+# would be affected before submission, not surface the conflict only via a
+# flash message after a failed POST. Replace the JS confirm() with a server
+# -rendered confirm page (or modal) listing affected recipes.
 @ingredients_bp.route("/ingredients/<int:id>/delete", methods=["POST"])
 def delete_ingredient(id):
     ing = Ingredient.query.filter_by(id=id, profile_id=current_profile()).first_or_404()
@@ -83,7 +87,7 @@ def api_create():
     ing = Ingredient(
         profile_id=current_profile(),
         name=data["name"].strip(),
-        brand=data.get("brand", "").strip() or None,
+        brand=(data.get("brand") or "").strip() or None,
         serving_size=data["servingSize"],
         serving_unit=data["servingUnit"].strip(),
         calories=data.get("calories", 0),
@@ -112,7 +116,7 @@ def api_update(id):
     if errors:
         return jsonify({"errors": errors}), 422
     ing.name = data["name"].strip()
-    ing.brand = data.get("brand", "").strip() or None
+    ing.brand = (data.get("brand") or "").strip() or None
     ing.serving_size = data["servingSize"]
     ing.serving_unit = data["servingUnit"].strip()
     ing.calories = data.get("calories", 0)
@@ -151,7 +155,7 @@ def _validate_form(form):
         errors["serving_size"] = "Serving size must be greater than 0."
     if not form.get("serving_unit", "").strip():
         errors["serving_unit"] = "Serving unit is required."
-    for field in ["calories", "protein", "carbs", "fat"]:
+    for field in ["calories", "protein", "carbs", "fat", "fiber", "sugar"]:
         val = _float(form.get(field))
         if val is not None and val < 0:
             errors[field] = "Cannot be negative."
@@ -160,16 +164,16 @@ def _validate_form(form):
 
 def _validate_data(data):
     errors = {}
-    if not data.get("name", "").strip():
+    if not (data.get("name") or "").strip():
         errors["name"] = "Name is required."
     size = data.get("servingSize")
     if size is None:
         errors["servingSize"] = "Serving size is required."
     elif not isinstance(size, (int, float)) or size <= 0:
         errors["servingSize"] = "Serving size must be greater than 0."
-    if not data.get("servingUnit", "").strip():
+    if not (data.get("servingUnit") or "").strip():
         errors["servingUnit"] = "Serving unit is required."
-    for field in ["calories", "protein", "carbs", "fat"]:
+    for field in ["calories", "protein", "carbs", "fat", "fiber", "sugar"]:
         val = data.get(field)
         if val is not None and (not isinstance(val, (int, float)) or val < 0):
             errors[field] = "Cannot be negative."

@@ -19,7 +19,7 @@ def list_recipes():
         try:
             _, ps = calculate_recipe_macros(r)
         except ValueError:
-            ps = dict(calories=0, protein=0, carbs=0, fat=0)
+            ps = dict(calories=0, protein=0, carbs=0, fat=0, fiber=0, sugar=0)
         macro_data[r.id] = ps
     return render_template("recipes/list.html", recipes=recipes, macro_data=macro_data)
 
@@ -89,6 +89,9 @@ def edit_recipe(id):
                            **_form_context(profile, exclude_id=id))
 
 
+# NOTE: PROJECT.md 2.3 — delete confirmation should preview affected recipes
+# before submission, not surface the conflict only after a failed POST. Replace
+# the JS confirm() with a server-rendered confirm page that lists the parents.
 @recipes_bp.route("/recipes/<int:id>/delete", methods=["POST"])
 def delete_recipe(id):
     profile = current_profile()
@@ -113,12 +116,16 @@ def api_list():
     recipes = Recipe.query.filter_by(profile_id=profile).order_by(Recipe.name).all()
     result = []
     for r in recipes:
+        macro_error = None
         try:
             _, ps = calculate_recipe_macros(r)
-        except ValueError:
-            ps = dict(calories=0, protein=0, carbs=0, fat=0)
+        except ValueError as e:
+            ps = dict(calories=0, protein=0, carbs=0, fat=0, fiber=0, sugar=0)
+            macro_error = str(e)
         d = r.to_dict()
         d["perServingMacros"] = ps
+        if macro_error:
+            d["macroError"] = macro_error
         result.append(d)
     return jsonify(result)
 
@@ -241,7 +248,7 @@ def _parse_form_items(form):
         try:
             items.append({
                 "type": t,
-                "ref_id": int(ref_id),
+                "refId": int(ref_id),
                 "quantity": float(qty),
                 "unit": unit.strip(),
             })
@@ -250,25 +257,31 @@ def _parse_form_items(form):
     return items
 
 
+# NOTE: silently drops items missing ingredientId/subRecipeId/quantity rather
+# than rejecting the request — POSTers can't tell rows were ignored. Tighten
+# to return 422 with the offending indices when this is touched again.
 def _parse_api_items(raw):
     items = []
     for item in raw:
         if item.get("ingredientId"):
-            items.append({"type": "ingredient", "ref_id": item["ingredientId"],
+            items.append({"type": "ingredient", "refId": item["ingredientId"],
                           "quantity": item["quantity"], "unit": item.get("unit", "g")})
         elif item.get("subRecipeId"):
-            items.append({"type": "subrecipe", "ref_id": item["subRecipeId"],
+            items.append({"type": "subrecipe", "refId": item["subRecipeId"],
                           "quantity": item["quantity"], "unit": item.get("unit", "serving")})
     return items
 
 
+# NOTE: doesn't verify refId belongs to the current profile, so a crafted POST
+# could attach another profile's ingredient/recipe. Single-profile-only today;
+# becomes a real isolation gap once PROFILES has more than one entry.
 def _replace_recipe_items(recipe_id, items):
     RecipeIngredient.query.filter_by(recipe_id=recipe_id).delete()
     for item in items:
         ri = RecipeIngredient(
             recipe_id=recipe_id,
-            ingredient_id=item["ref_id"] if item["type"] == "ingredient" else None,
-            sub_recipe_id=item["ref_id"] if item["type"] == "subrecipe" else None,
+            ingredient_id=item["refId"] if item["type"] == "ingredient" else None,
+            sub_recipe_id=item["refId"] if item["type"] == "subrecipe" else None,
             quantity=item["quantity"],
             unit=item["unit"],
         )
@@ -276,12 +289,16 @@ def _replace_recipe_items(recipe_id, items):
 
 
 def _recipe_detail_dict(recipe):
+    macro_error = None
     try:
         total, per_serving = calculate_recipe_macros(recipe)
-    except ValueError:
+    except ValueError as e:
         total = per_serving = dict(calories=0, protein=0, carbs=0, fat=0, fiber=0, sugar=0)
+        macro_error = str(e)
     d = recipe.to_dict()
     d["macros"] = {"total": total, "perServing": per_serving}
+    if macro_error:
+        d["macroError"] = macro_error
     d["ingredients"] = [
         {
             "id": ri.id,
@@ -310,7 +327,7 @@ def _validate_recipe_form(form):
 
 def _validate_recipe_data(data):
     errors = {}
-    if not data.get("name", "").strip():
+    if not (data.get("name") or "").strip():
         errors["name"] = "Name is required."
     s = data.get("totalServings")
     if s is None:
