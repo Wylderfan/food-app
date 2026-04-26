@@ -9,6 +9,7 @@ class Config:
     PROFILES = os.getenv("PROFILES", "Default")
     SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL", "sqlite:///app.db")
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    USDA_API_KEY = os.getenv("USDA_API_KEY", "DEMO_KEY")
 
 
 class DevelopmentConfig(Config):

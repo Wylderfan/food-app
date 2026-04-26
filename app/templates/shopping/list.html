@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% block title %}Shopping list — {{ config.APP_NAME }}{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+
+  <div class="flex items-center justify-between mb-6 flex-wrap gap-3">
+    <h1 class="text-2xl font-semibold">Shopping list</h1>
+    <div class="flex flex-wrap gap-2">
+      {% if ingredients %}
+      <button type="button"
+              onclick="document.getElementById('add-ing-form').classList.toggle('hidden'); document.getElementById('add-recipe-form').classList.add('hidden')"
+              class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm px-4 py-2 rounded transition-colors">
+        + Ingredient
+      </button>
+      {% endif %}
+      {% if recipes %}
+      <button type="button"
+              onclick="document.getElementById('add-recipe-form').classList.toggle('hidden'); document.getElementById('add-ing-form').classList.add('hidden')"
+              class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm px-4 py-2 rounded transition-colors">
+        + From recipe
+      </button>
+      {% endif %}
+    </div>
+  </div>
+
+  {# Add ingredient form #}
+  {% if ingredients %}
+  <form method="POST" action="/shopping-list/add-ingredient" id="add-ing-form"
+        class="hidden bg-gray-900 border border-gray-800 rounded-lg p-4 mb-4 flex flex-wrap items-end gap-3">
+    <div class="flex-1 min-w-48">
+      <label class="block text-xs text-gray-400 mb-1">Ingredient</label>
+      <select name="ingredient_id" required
+              class="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-indigo-500 transition-colors">
+        <option value="">— select —</option>
+        {% for ing in ingredients %}
+        <option value="{{ ing.id }}">{{ ing.name }}{% if ing.brand %} ({{ ing.brand }}){% endif %}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="w-32">
+      <label class="block text-xs text-gray-400 mb-1">Quantity</label>
+      <input type="number" name="quantity" step="any" min="0.001" required
+             class="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-indigo-500 transition-colors">
+    </div>
+    <button type="submit"
+            class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm px-5 py-2 rounded transition-colors">
+      Add
+    </button>
+  </form>
+  {% endif %}
+
+  {# Add from recipe form #}
+  {% if recipes %}
+  <form method="POST" action="/shopping-list/add-recipe" id="add-recipe-form"
+        class="hidden bg-gray-900 border border-gray-800 rounded-lg p-4 mb-4 flex flex-wrap items-end gap-3">
+    <div class="flex-1 min-w-48">
+      <label class="block text-xs text-gray-400 mb-1">Recipe</label>
+      <select name="recipe_id" required
+              class="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-indigo-500 transition-colors">
+        <option value="">— select —</option>
+        {% for r in recipes %}
+        <option value="{{ r.id }}">{{ r.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="w-32">
+      <label class="block text-xs text-gray-400 mb-1">Servings</label>
+      <input type="number" name="servings" step="any" min="0.001" required
+             class="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-indigo-500 transition-colors">
+    </div>
+    <button type="submit"
+            class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm px-5 py-2 rounded transition-colors">
+      Add gaps
+    </button>
+    <p class="basis-full text-xs text-gray-500 -mt-1">
+      Only ingredients you don't already have enough of will be added.
+    </p>
+  </form>
+  {% endif %}
+
+  {% if items %}
+  <div class="space-y-2">
+    {% for item in items %}
+    <div class="flex items-center gap-3 px-4 py-3 rounded-lg border
+                {% if item.purchased %}bg-gray-900/50 border-gray-800 opacity-60{% else %}bg-gray-900 border-gray-800{% endif %}">
+
+      {# Toggle (the big tap target) — wrap most of the row #}
+      <form method="POST" action="/shopping-list/{{ item.id }}/toggle" class="flex items-center gap-3 flex-1 min-w-0">
+        <button type="submit" aria-label="toggle purchased"
+                class="flex-shrink-0 w-6 h-6 rounded border-2 flex items-center justify-center transition-colors
+                       {% if item.purchased %}bg-indigo-600 border-indigo-600 text-white{% else %}border-gray-600 hover:border-indigo-400{% endif %}">
+          {% if item.purchased %}
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
+          </svg>
+          {% endif %}
+        </button>
+        <div class="min-w-0 flex-1 text-left">
+          <div class="font-medium truncate {% if item.purchased %}line-through text-gray-500{% else %}text-gray-100{% endif %}">
+            {{ item.ingredient.name }}
+          </div>
+          <div class="text-xs text-gray-500 truncate">
+            {{ "%g" | format(item.quantity_needed) }} {{ item.unit }}
+            {% if item.added_from %} · {{ item.added_from }}{% endif %}
+          </div>
+        </div>
+      </form>
+
+      {# Delete button — separate form so it doesn't trip the toggle #}
+      <form method="POST" action="/shopping-list/{{ item.id }}/delete">
+        <button type="submit" aria-label="remove"
+                class="text-gray-500 hover:text-red-400 transition-colors px-2 py-1">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% set purchased_count = items | selectattr('purchased') | list | length %}
+  <div class="mt-4 flex items-center justify-between text-xs text-gray-500">
+    <span>
+      {{ items | length - purchased_count }} to buy{% if purchased_count %}, {{ purchased_count }} purchased{% endif %}.
+    </span>
+    {% if purchased_count %}
+    <form method="POST" action="/shopping-list/clear-purchased">
+      <button type="submit"
+              class="text-gray-400 hover:text-gray-200 hover:underline transition-colors">
+        Clear purchased
+      </button>
+    </form>
+    {% endif %}
+  </div>
+  {% else %}
+  <div class="text-center py-16 text-gray-500">
+    {% if not ingredients %}
+    <p class="text-lg mb-2">No ingredients yet.</p>
+    <p class="text-sm">
+      <a href="/ingredients/new" class="text-indigo-400 hover:text-indigo-300">Add an ingredient</a> first.
+    </p>
+    {% else %}
+    <p class="text-lg mb-2">List is empty.</p>
+    <p class="text-sm">Add an ingredient or pull missing items from a recipe above.</p>
+    {% endif %}
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

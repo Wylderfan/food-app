@@ -170,3 +170,29 @@ class InventoryItem(db.Model):
             "lowStock": self.is_low_stock,
             "updatedAt": self.updated_at.isoformat(),
         }
+
+
+class ShoppingListItem(db.Model):
+    __tablename__ = "shopping_list_items"
+
+    id = db.Column(db.Integer, primary_key=True)
+    ingredient_id = db.Column(db.Integer, db.ForeignKey("ingredients.id"), nullable=False)
+    quantity_needed = db.Column(db.Float, nullable=False)
+    unit = db.Column(db.String(50), nullable=False)
+    purchased = db.Column(db.Boolean, nullable=False, default=False)
+    added_from = db.Column(db.String(200))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    ingredient = db.relationship("Ingredient")
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "ingredientId": self.ingredient_id,
+            "ingredientName": self.ingredient.name if self.ingredient else None,
+            "quantityNeeded": self.quantity_needed,
+            "unit": self.unit,
+            "purchased": self.purchased,
+            "addedFrom": self.added_from,
+            "createdAt": self.created_at.isoformat(),
+        }

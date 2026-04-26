@@ -16,6 +16,32 @@
     <h1 class="text-2xl font-semibold">{{ 'Edit' if ingredient else 'New' }} Ingredient</h1>
   </div>
 
+  {% if not ingredient %}
+  {# USDA search panel — pre-fill the manual form below from external data #}
+  <div class="bg-gray-900 border border-gray-800 rounded-lg p-4 mb-6">
+    <div class="flex items-center justify-between gap-3">
+      <p class="text-sm text-gray-300">Look up nutrition from the USDA database</p>
+      <button type="button" id="usda-toggle"
+              class="text-xs text-indigo-400 hover:text-indigo-300 transition-colors">
+        Search USDA
+      </button>
+    </div>
+    <div id="usda-panel" class="hidden mt-3 space-y-3">
+      <div class="flex gap-2">
+        <input type="text" id="usda-query" placeholder="e.g. chicken breast"
+               class="flex-1 bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-indigo-500 transition-colors">
+        <button type="button" id="usda-search-btn"
+                class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm px-4 py-2 rounded transition-colors">
+          Search
+        </button>
+      </div>
+      <p class="text-xs text-gray-500">Values come back per 100 g/ml — review and tweak after import.</p>
+      <div id="usda-status" class="text-xs"></div>
+      <div id="usda-results" class="space-y-2 max-h-80 overflow-y-auto"></div>
+    </div>
+  </div>
+  {% endif %}
+
   <form method="POST" class="space-y-5">
 
     <div class="space-y-4">
@@ -156,4 +182,97 @@
 
   </form>
 </div>
+
+{% if not ingredient %}
+<script>
+(function () {
+  const toggle = document.getElementById("usda-toggle");
+  const panel  = document.getElementById("usda-panel");
+  const queryEl = document.getElementById("usda-query");
+  const searchBtn = document.getElementById("usda-search-btn");
+  const statusEl = document.getElementById("usda-status");
+  const resultsEl = document.getElementById("usda-results");
+
+  toggle.addEventListener("click", () => {
+    panel.classList.toggle("hidden");
+    if (!panel.classList.contains("hidden")) queryEl.focus();
+  });
+
+  function setStatus(msg, kind) {
+    statusEl.textContent = msg || "";
+    statusEl.className = "text-xs " + (kind === "error" ? "text-red-400" : "text-gray-500");
+  }
+
+  function renderResults(items) {
+    resultsEl.innerHTML = "";
+    if (!items.length) {
+      setStatus("No results.", "info");
+      return;
+    }
+    setStatus("");
+    items.forEach((it) => {
+      const row = document.createElement("div");
+      row.className = "bg-gray-800 border border-gray-700 rounded p-3 text-sm";
+      const macros = `${it.calories.toFixed(0)} cal · P ${it.protein.toFixed(1)} · C ${it.carbs.toFixed(1)} · F ${it.fat.toFixed(1)}`;
+      row.innerHTML = `
+        <div class="flex items-start justify-between gap-3">
+          <div class="min-w-0 flex-1">
+            <div class="text-gray-100 font-medium truncate">${escapeHTML(it.name || "—")}</div>
+            <div class="text-xs text-gray-500 truncate">
+              ${escapeHTML(it.brand || it.dataType || "")}
+            </div>
+            <div class="text-xs text-gray-400 mt-1">per ${it.servingSize}${it.servingUnit} — ${macros}</div>
+          </div>
+          <button type="button" class="text-xs bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded transition-colors">
+            Import
+          </button>
+        </div>`;
+      row.querySelector("button").addEventListener("click", () => importItem(it));
+      resultsEl.appendChild(row);
+    });
+  }
+
+  function importItem(it) {
+    const f = document.querySelector("form[method='POST']");
+    f.querySelector("[name='name']").value = it.name || "";
+    f.querySelector("[name='brand']").value = it.brand || "";
+    f.querySelector("[name='serving_size']").value = it.servingSize;
+    f.querySelector("[name='serving_unit']").value = it.servingUnit;
+    f.querySelector("[name='calories']").value = it.calories;
+    f.querySelector("[name='protein']").value = it.protein;
+    f.querySelector("[name='carbs']").value = it.carbs;
+    f.querySelector("[name='fat']").value = it.fat;
+    f.querySelector("[name='fiber']").value = it.fiber || "";
+    f.querySelector("[name='sugar']").value = it.sugar || "";
+    f.scrollIntoView({ behavior: "smooth", block: "start" });
+    setStatus("Imported — review and save below.", "info");
+  }
+
+  function escapeHTML(s) {
+    return String(s).replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  }
+
+  async function runSearch() {
+    const q = queryEl.value.trim();
+    if (!q) return;
+    setStatus("Searching…", "info");
+    resultsEl.innerHTML = "";
+    try {
+      const r = await fetch(`/api/ingredients/search-external?query=${encodeURIComponent(q)}`);
+      const data = await r.json();
+      if (!r.ok) {
+        setStatus(data.error || `Search failed (${r.status}).`, "error");
+        return;
+      }
+      renderResults(data.results || []);
+    } catch (e) {
+      setStatus("Network error: " + e.message, "error");
+    }
+  }
+
+  searchBtn.addEventListener("click", runSearch);
+  queryEl.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); runSearch(); } });
+})();
+</script>
+{% endif %}
 {% endblock %}

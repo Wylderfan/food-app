@@ -1,8 +1,9 @@
-from flask import Blueprint, jsonify, request, render_template, redirect, url_for, flash
+from flask import Blueprint, jsonify, request, render_template, redirect, url_for, flash, current_app
 from app import db
 from app.models import Ingredient, RecipeIngredient
 from app.utils.helpers import _float
 from app.utils.inventory import get_or_create_item
+from app.utils.usda import search_foods, USDAError
 
 ingredients_bp = Blueprint("ingredients", __name__)
 
@@ -84,6 +85,18 @@ def delete_ingredient(id):
 
 
 # ── API ───────────────────────────────────────────────────────────────────────
+
+@ingredients_bp.route("/api/ingredients/search-external", methods=["GET"])
+def api_search_external():
+    query = request.args.get("query", "").strip()
+    if not query:
+        return jsonify({"results": []})
+    try:
+        results = search_foods(query, current_app.config["USDA_API_KEY"])
+    except USDAError as e:
+        return jsonify({"error": str(e)}), 502
+    return jsonify({"results": results})
+
 
 @ingredients_bp.route("/api/ingredients", methods=["GET"])
 def api_list():
