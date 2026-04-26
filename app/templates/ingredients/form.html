@@ -42,7 +42,7 @@
   </div>
   {% endif %}
 
-  <form method="POST" class="space-y-5">
+  <form method="POST" id="ingredient-form" class="space-y-5">
 
     <div class="space-y-4">
       {# Name #}
@@ -233,7 +233,7 @@
   }
 
   function importItem(it) {
-    const f = document.querySelector("form[method='POST']");
+    const f = document.getElementById("ingredient-form");
     f.querySelector("[name='name']").value = it.name || "";
     f.querySelector("[name='brand']").value = it.brand || "";
     f.querySelector("[name='serving_size']").value = it.servingSize;
