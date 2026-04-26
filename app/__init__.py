@@ -23,7 +23,9 @@ def create_app(config_name=None):
     from . import models  # noqa: F401
 
     from app.blueprints.main import main_bp
+    from app.blueprints.ingredients import ingredients_bp
     app.register_blueprint(main_bp)
+    app.register_blueprint(ingredients_bp)
 
     @app.context_processor
     def inject_globals():

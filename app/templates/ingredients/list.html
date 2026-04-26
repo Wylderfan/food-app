@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}Ingredients — {{ config.APP_NAME }}{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto">
+  <div class="flex items-center justify-between mb-6">
+    <h1 class="text-2xl font-semibold">Ingredients</h1>
+    <a href="/ingredients/new"
+       class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm px-4 py-2 rounded transition-colors">
+      + Add Ingredient
+    </a>
+  </div>
+
+  <form method="GET" class="mb-5 flex gap-2">
+    <input type="text" name="search" value="{{ search }}" placeholder="Search by name…"
+           class="flex-1 bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-indigo-500 transition-colors">
+    <button type="submit"
+            class="bg-gray-700 hover:bg-gray-600 text-sm px-4 py-2 rounded text-gray-200 transition-colors">
+      Search
+    </button>
+    {% if search %}
+    <a href="/ingredients"
+       class="bg-gray-700 hover:bg-gray-600 text-sm px-4 py-2 rounded text-gray-400 transition-colors">
+      Clear
+    </a>
+    {% endif %}
+  </form>
+
+  {% if ingredients %}
+  <div class="bg-gray-900 rounded-lg border border-gray-800 overflow-hidden">
+    <table class="w-full text-sm">
+      <thead class="bg-gray-800 text-gray-400 text-xs uppercase tracking-wide">
+        <tr>
+          <th class="text-left px-4 py-3">Name</th>
+          <th class="text-left px-4 py-3">Serving</th>
+          <th class="text-right px-4 py-3">Cal</th>
+          <th class="text-right px-4 py-3">Protein</th>
+          <th class="text-right px-4 py-3">Carbs</th>
+          <th class="text-right px-4 py-3">Fat</th>
+          <th class="px-4 py-3"></th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-800">
+        {% for ing in ingredients %}
+        <tr class="hover:bg-gray-800/40 transition-colors">
+          <td class="px-4 py-3">
+            <div class="font-medium text-gray-100">{{ ing.name }}</div>
+            {% if ing.brand %}
+            <div class="text-xs text-gray-500">{{ ing.brand }}</div>
+            {% endif %}
+          </td>
+          <td class="px-4 py-3 text-gray-400 whitespace-nowrap">
+            {{ ing.serving_size | int if ing.serving_size == ing.serving_size | int else ing.serving_size }}
+            {{ ing.serving_unit }}
+          </td>
+          <td class="px-4 py-3 text-right text-gray-200">{{ ing.calories | round(1) }}</td>
+          <td class="px-4 py-3 text-right text-blue-400">{{ ing.protein | round(1) }}g</td>
+          <td class="px-4 py-3 text-right text-yellow-400">{{ ing.carbs | round(1) }}g</td>
+          <td class="px-4 py-3 text-right text-red-400">{{ ing.fat | round(1) }}g</td>
+          <td class="px-4 py-3">
+            <div class="flex items-center justify-end gap-3">
+              <a href="/ingredients/{{ ing.id }}/edit"
+                 class="text-gray-400 hover:text-indigo-400 text-xs transition-colors">Edit</a>
+              <form method="POST" action="/ingredients/{{ ing.id }}/delete"
+                    onsubmit="return confirm('Delete \'{{ ing.name }}\'? This cannot be undone.')">
+                <button type="submit"
+                        class="text-gray-400 hover:text-red-400 text-xs transition-colors">Delete</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="mt-3 text-xs text-gray-500">
+    {{ ingredients | length }} ingredient{{ 's' if ingredients | length != 1 }}
+    {% if search %} matching "{{ search }}"{% endif %}
+  </p>
+  {% else %}
+  <div class="text-center py-16 text-gray-500">
+    {% if search %}
+    <p>No ingredients match "{{ search }}".</p>
+    <a href="/ingredients" class="mt-2 inline-block text-sm text-indigo-400 hover:text-indigo-300">Clear search</a>
+    {% else %}
+    <p class="text-lg mb-2">No ingredients yet.</p>
+    <a href="/ingredients/new" class="text-sm text-indigo-400 hover:text-indigo-300">Add your first ingredient →</a>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
