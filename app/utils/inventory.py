@@ -31,18 +31,16 @@ def flatten_recipe(recipe, servings, _visited=None):
     return result
 
 
-def get_or_create_item(profile_id, ingredient_id):
-    item = InventoryItem.query.filter_by(
-        profile_id=profile_id, ingredient_id=ingredient_id
-    ).first()
+def get_or_create_item(ingredient_id):
+    item = InventoryItem.query.filter_by(ingredient_id=ingredient_id).first()
     if not item:
-        item = InventoryItem(profile_id=profile_id, ingredient_id=ingredient_id)
+        item = InventoryItem(ingredient_id=ingredient_id)
         db.session.add(item)
         db.session.flush()
     return item
 
 
-def apply_recipe_to_inventory(profile_id, recipe, servings, deduct=True):
+def apply_recipe_to_inventory(recipe, servings, deduct=True):
     """
     Adjust inventory for `servings` portions of `recipe`. deduct=True decreases
     quantity_on_hand (meal logged); deduct=False increases (log entry removed).
@@ -60,6 +58,6 @@ def apply_recipe_to_inventory(profile_id, recipe, servings, deduct=True):
 
     sign = -1.0 if deduct else 1.0
     for ing_id, qty in flat.items():
-        item = get_or_create_item(profile_id, ing_id)
+        item = get_or_create_item(ing_id)
         item.quantity_on_hand += qty * sign
     return flat

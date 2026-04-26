@@ -2,7 +2,7 @@ import json
 from flask import Blueprint, jsonify, request, render_template, redirect, url_for, flash
 from app import db
 from app.models import Ingredient, Recipe, RecipeIngredient, DailyLogEntry
-from app.utils.helpers import current_profile, _float
+from app.utils.helpers import _float
 from app.utils.macros import calculate_recipe_macros
 
 recipes_bp = Blueprint("recipes", __name__)
@@ -12,8 +12,7 @@ recipes_bp = Blueprint("recipes", __name__)
 
 @recipes_bp.route("/recipes")
 def list_recipes():
-    profile = current_profile()
-    recipes = Recipe.query.filter_by(profile_id=profile).order_by(Recipe.name).all()
+    recipes = Recipe.query.order_by(Recipe.name).all()
     macro_data = {}
     for r in recipes:
         try:
@@ -26,8 +25,7 @@ def list_recipes():
 
 @recipes_bp.route("/recipes/<int:id>")
 def view_recipe(id):
-    profile = current_profile()
-    recipe = Recipe.query.filter_by(id=id, profile_id=profile).first_or_404()
+    recipe = Recipe.query.get_or_404(id)
     try:
         total, per_serving = calculate_recipe_macros(recipe)
     except ValueError as e:
@@ -38,16 +36,14 @@ def view_recipe(id):
 
 @recipes_bp.route("/recipes/new", methods=["GET", "POST"])
 def new_recipe():
-    profile = current_profile()
     if request.method == "POST":
         errors = _validate_recipe_form(request.form)
         items = _parse_form_items(request.form)
         if errors:
             return render_template("recipes/form.html", errors=errors, recipe=None,
                                    form=request.form, initial_items=items,
-                                   **_form_context(profile, exclude_id=None))
+                                   **_form_context(exclude_id=None))
         recipe = Recipe(
-            profile_id=profile,
             name=request.form["name"].strip(),
             description=request.form.get("description", "").strip() or None,
             total_servings=_float(request.form["total_servings"]),
@@ -61,20 +57,19 @@ def new_recipe():
         return redirect(url_for("recipes.view_recipe", id=recipe.id))
     return render_template("recipes/form.html", errors={}, recipe=None,
                            form={}, initial_items=[],
-                           **_form_context(profile, exclude_id=None))
+                           **_form_context(exclude_id=None))
 
 
 @recipes_bp.route("/recipes/<int:id>/edit", methods=["GET", "POST"])
 def edit_recipe(id):
-    profile = current_profile()
-    recipe = Recipe.query.filter_by(id=id, profile_id=profile).first_or_404()
+    recipe = Recipe.query.get_or_404(id)
     if request.method == "POST":
         errors = _validate_recipe_form(request.form)
         items = _parse_form_items(request.form)
         if errors:
             return render_template("recipes/form.html", errors=errors, recipe=recipe,
                                    form=request.form, initial_items=items,
-                                   **_form_context(profile, exclude_id=id))
+                                   **_form_context(exclude_id=id))
         recipe.name = request.form["name"].strip()
         recipe.description = request.form.get("description", "").strip() or None
         recipe.total_servings = _float(request.form["total_servings"])
@@ -86,7 +81,7 @@ def edit_recipe(id):
     initial_items = _recipe_items_for_form(recipe)
     return render_template("recipes/form.html", errors={}, recipe=recipe,
                            form={}, initial_items=initial_items,
-                           **_form_context(profile, exclude_id=id))
+                           **_form_context(exclude_id=id))
 
 
 # NOTE: PROJECT.md 2.3 — delete confirmation should preview affected recipes
@@ -94,8 +89,7 @@ def edit_recipe(id):
 # the JS confirm() with a server-rendered confirm page that lists the parents.
 @recipes_bp.route("/recipes/<int:id>/delete", methods=["POST"])
 def delete_recipe(id):
-    profile = current_profile()
-    recipe = Recipe.query.filter_by(id=id, profile_id=profile).first_or_404()
+    recipe = Recipe.query.get_or_404(id)
     used_in = RecipeIngredient.query.filter_by(sub_recipe_id=id).first()
     if used_in:
         parent = Recipe.query.get(used_in.recipe_id)
@@ -121,8 +115,7 @@ def delete_recipe(id):
 
 @recipes_bp.route("/api/recipes", methods=["GET"])
 def api_list():
-    profile = current_profile()
-    recipes = Recipe.query.filter_by(profile_id=profile).order_by(Recipe.name).all()
+    recipes = Recipe.query.order_by(Recipe.name).all()
     result = []
     for r in recipes:
         macro_error = None
@@ -146,7 +139,6 @@ def api_create():
     if errors:
         return jsonify({"errors": errors}), 422
     recipe = Recipe(
-        profile_id=current_profile(),
         name=data["name"].strip(),
         description=(data.get("description") or "").strip() or None,
         total_servings=data["totalServings"],
@@ -161,13 +153,13 @@ def api_create():
 
 @recipes_bp.route("/api/recipes/<int:id>", methods=["GET"])
 def api_get(id):
-    recipe = Recipe.query.filter_by(id=id, profile_id=current_profile()).first_or_404()
+    recipe = Recipe.query.get_or_404(id)
     return jsonify(_recipe_detail_dict(recipe))
 
 
 @recipes_bp.route("/api/recipes/<int:id>", methods=["PUT"])
 def api_update(id):
-    recipe = Recipe.query.filter_by(id=id, profile_id=current_profile()).first_or_404()
+    recipe = Recipe.query.get_or_404(id)
     data = request.get_json() or {}
     errors = _validate_recipe_data(data)
     if errors:
@@ -183,7 +175,7 @@ def api_update(id):
 
 @recipes_bp.route("/api/recipes/<int:id>", methods=["DELETE"])
 def api_delete(id):
-    recipe = Recipe.query.filter_by(id=id, profile_id=current_profile()).first_or_404()
+    recipe = Recipe.query.get_or_404(id)
     used_in = RecipeIngredient.query.filter_by(sub_recipe_id=id).first()
     if used_in:
         parent = Recipe.query.get(used_in.recipe_id)
@@ -195,9 +187,9 @@ def api_delete(id):
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-def _form_context(profile, exclude_id):
-    ingredients = Ingredient.query.filter_by(profile_id=profile).order_by(Ingredient.name).all()
-    recipes = Recipe.query.filter_by(profile_id=profile).order_by(Recipe.name).all()
+def _form_context(exclude_id):
+    ingredients = Ingredient.query.order_by(Ingredient.name).all()
+    recipes = Recipe.query.order_by(Recipe.name).all()
 
     ingredients_json = {
         str(i.id): {
@@ -281,9 +273,6 @@ def _parse_api_items(raw):
     return items
 
 
-# NOTE: doesn't verify refId belongs to the current profile, so a crafted POST
-# could attach another profile's ingredient/recipe. Single-profile-only today;
-# becomes a real isolation gap once PROFILES has more than one entry.
 def _replace_recipe_items(recipe_id, items):
     RecipeIngredient.query.filter_by(recipe_id=recipe_id).delete()
     for item in items:

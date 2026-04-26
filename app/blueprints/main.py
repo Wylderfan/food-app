@@ -9,4 +9,4 @@ def switch_profile():
     requested = request.form.get("profile", "")
     if requested in profiles:
         session["profile"] = requested
-    return redirect(request.referrer or url_for("main.index"))
+    return redirect(request.referrer or url_for("tracking.daily_log"))

@@ -63,7 +63,7 @@ def daily_log():
             totals[k] += m[k]
 
     goals = _get_or_create_goals(profile)
-    recipes = Recipe.query.filter_by(profile_id=profile).order_by(Recipe.name).all()
+    recipes = Recipe.query.order_by(Recipe.name).all()
 
     return render_template(
         "tracking/daily.html",
@@ -89,7 +89,7 @@ def log_meal():
         flash("Recipe and a positive servings count are required.", "error")
         return redirect(url_for("tracking.daily_log", date=sel_date.isoformat()))
 
-    recipe = Recipe.query.filter_by(id=recipe_id, profile_id=profile).first()
+    recipe = Recipe.query.get(recipe_id)
     if not recipe:
         flash("Recipe not found.", "error")
         return redirect(url_for("tracking.daily_log", date=sel_date.isoformat()))
@@ -99,7 +99,7 @@ def log_meal():
         recipe_id=recipe_id, servings=servings,
     )
     db.session.add(entry)
-    apply_recipe_to_inventory(profile, recipe, servings, deduct=True)
+    apply_recipe_to_inventory(recipe, servings, deduct=True)
     db.session.commit()
     flash(f"Logged {servings:g} × {recipe.name}.", "success")
     return redirect(url_for("tracking.daily_log", date=sel_date.isoformat()))
@@ -111,7 +111,7 @@ def delete_log(id):
     entry = DailyLogEntry.query.filter_by(id=id, profile_id=profile).first_or_404()
     sel_date = entry.date
     if entry.recipe:
-        apply_recipe_to_inventory(profile, entry.recipe, entry.servings, deduct=False)
+        apply_recipe_to_inventory(entry.recipe, entry.servings, deduct=False)
     db.session.delete(entry)
     db.session.commit()
     flash("Log entry removed.", "success")
@@ -190,7 +190,7 @@ def api_log_meal():
     if errors:
         return jsonify({"errors": errors}), 422
 
-    recipe = Recipe.query.filter_by(id=recipe_id, profile_id=profile).first()
+    recipe = Recipe.query.get(recipe_id)
     if not recipe:
         return jsonify({"errors": {"recipeId": "Recipe not found."}}), 422
 
@@ -199,7 +199,7 @@ def api_log_meal():
         recipe_id=recipe_id, servings=servings,
     )
     db.session.add(entry)
-    apply_recipe_to_inventory(profile, recipe, servings, deduct=True)
+    apply_recipe_to_inventory(recipe, servings, deduct=True)
     db.session.commit()
     return jsonify(entry.to_dict(macros=_entry_macros(entry))), 201
 
@@ -209,7 +209,7 @@ def api_delete_log(id):
     profile = current_profile()
     entry = DailyLogEntry.query.filter_by(id=id, profile_id=profile).first_or_404()
     if entry.recipe:
-        apply_recipe_to_inventory(profile, entry.recipe, entry.servings, deduct=False)
+        apply_recipe_to_inventory(entry.recipe, entry.servings, deduct=False)
     db.session.delete(entry)
     db.session.commit()
     return jsonify({"deleted": id})

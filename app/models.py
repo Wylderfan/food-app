@@ -6,7 +6,6 @@ class Ingredient(db.Model):
     __tablename__ = "ingredients"
 
     id = db.Column(db.Integer, primary_key=True)
-    profile_id = db.Column(db.String(100), nullable=False)
     name = db.Column(db.String(200), nullable=False)
     brand = db.Column(db.String(200))
     serving_size = db.Column(db.Float, nullable=False)
@@ -49,7 +48,6 @@ class Recipe(db.Model):
     __tablename__ = "recipes"
 
     id = db.Column(db.Integer, primary_key=True)
-    profile_id = db.Column(db.String(100), nullable=False)
     name = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text)
     total_servings = db.Column(db.Float, nullable=False)
@@ -147,15 +145,10 @@ class InventoryItem(db.Model):
     __tablename__ = "inventory_items"
 
     id = db.Column(db.Integer, primary_key=True)
-    profile_id = db.Column(db.String(100), nullable=False)
-    ingredient_id = db.Column(db.Integer, db.ForeignKey("ingredients.id"), nullable=False)
+    ingredient_id = db.Column(db.Integer, db.ForeignKey("ingredients.id"), nullable=False, unique=True)
     quantity_on_hand = db.Column(db.Float, nullable=False, default=0)
     low_stock_threshold = db.Column(db.Float, nullable=False, default=0)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    __table_args__ = (
-        db.UniqueConstraint("profile_id", "ingredient_id", name="uq_inv_profile_ingredient"),
-    )
 
     @property
     def is_low_stock(self):

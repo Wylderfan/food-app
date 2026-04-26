@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, request, render_template, redirect, url_for, flash
 from app import db
 from app.models import Ingredient, RecipeIngredient
-from app.utils.helpers import current_profile, _float
+from app.utils.helpers import _float
 
 ingredients_bp = Blueprint("ingredients", __name__)
 
@@ -11,8 +11,7 @@ ingredients_bp = Blueprint("ingredients", __name__)
 @ingredients_bp.route("/ingredients")
 def list_ingredients():
     search = request.args.get("search", "").strip()
-    profile = current_profile()
-    q = Ingredient.query.filter_by(profile_id=profile)
+    q = Ingredient.query
     if search:
         q = q.filter(Ingredient.name.ilike(f"%{search}%"))
     ingredients = q.order_by(Ingredient.name).all()
@@ -25,7 +24,7 @@ def new_ingredient():
         errors = _validate_form(request.form)
         if errors:
             return render_template("ingredients/form.html", errors=errors, ingredient=None, form=request.form)
-        ing = _ingredient_from_form(request.form, profile_id=current_profile())
+        ing = _ingredient_from_form(request.form)
         db.session.add(ing)
         db.session.commit()
         flash(f"'{ing.name}' added.", "success")
@@ -35,7 +34,7 @@ def new_ingredient():
 
 @ingredients_bp.route("/ingredients/<int:id>/edit", methods=["GET", "POST"])
 def edit_ingredient(id):
-    ing = Ingredient.query.filter_by(id=id, profile_id=current_profile()).first_or_404()
+    ing = Ingredient.query.get_or_404(id)
     if request.method == "POST":
         errors = _validate_form(request.form)
         if errors:
@@ -53,7 +52,7 @@ def edit_ingredient(id):
 # -rendered confirm page (or modal) listing affected recipes.
 @ingredients_bp.route("/ingredients/<int:id>/delete", methods=["POST"])
 def delete_ingredient(id):
-    ing = Ingredient.query.filter_by(id=id, profile_id=current_profile()).first_or_404()
+    ing = Ingredient.query.get_or_404(id)
     used_in = RecipeIngredient.query.filter_by(ingredient_id=id).first()
     if used_in:
         from app.models import Recipe
@@ -72,7 +71,7 @@ def delete_ingredient(id):
 @ingredients_bp.route("/api/ingredients", methods=["GET"])
 def api_list():
     search = request.args.get("search", "").strip()
-    q = Ingredient.query.filter_by(profile_id=current_profile())
+    q = Ingredient.query
     if search:
         q = q.filter(Ingredient.name.ilike(f"%{search}%"))
     return jsonify([i.to_dict() for i in q.order_by(Ingredient.name)])
@@ -85,7 +84,6 @@ def api_create():
     if errors:
         return jsonify({"errors": errors}), 422
     ing = Ingredient(
-        profile_id=current_profile(),
         name=data["name"].strip(),
         brand=(data.get("brand") or "").strip() or None,
         serving_size=data["servingSize"],
@@ -104,13 +102,13 @@ def api_create():
 
 @ingredients_bp.route("/api/ingredients/<int:id>", methods=["GET"])
 def api_get(id):
-    ing = Ingredient.query.filter_by(id=id, profile_id=current_profile()).first_or_404()
+    ing = Ingredient.query.get_or_404(id)
     return jsonify(ing.to_dict())
 
 
 @ingredients_bp.route("/api/ingredients/<int:id>", methods=["PUT"])
 def api_update(id):
-    ing = Ingredient.query.filter_by(id=id, profile_id=current_profile()).first_or_404()
+    ing = Ingredient.query.get_or_404(id)
     data = request.get_json() or {}
     errors = _validate_data(data)
     if errors:
@@ -131,7 +129,7 @@ def api_update(id):
 
 @ingredients_bp.route("/api/ingredients/<int:id>", methods=["DELETE"])
 def api_delete(id):
-    ing = Ingredient.query.filter_by(id=id, profile_id=current_profile()).first_or_404()
+    ing = Ingredient.query.get_or_404(id)
     used_in = RecipeIngredient.query.filter_by(ingredient_id=id).first()
     if used_in:
         from app.models import Recipe
@@ -180,9 +178,8 @@ def _validate_data(data):
     return errors
 
 
-def _ingredient_from_form(form, profile_id):
+def _ingredient_from_form(form):
     return Ingredient(
-        profile_id=profile_id,
         name=form["name"].strip(),
         brand=form.get("brand", "").strip() or None,
         serving_size=_float(form["serving_size"]),

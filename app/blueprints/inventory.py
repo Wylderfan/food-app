@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, request, render_template, redirect, url_for, flash
 from app import db
 from app.models import Ingredient, InventoryItem
-from app.utils.helpers import current_profile, _float
+from app.utils.helpers import _float
 from app.utils.inventory import get_or_create_item
 
 inventory_bp = Blueprint("inventory", __name__)
@@ -11,20 +11,18 @@ inventory_bp = Blueprint("inventory", __name__)
 
 @inventory_bp.route("/inventory")
 def list_inventory():
-    profile = current_profile()
     items = (
-        InventoryItem.query.filter_by(profile_id=profile)
+        InventoryItem.query
         .join(Ingredient, InventoryItem.ingredient_id == Ingredient.id)
         .order_by(Ingredient.name).all()
     )
-    ingredients = Ingredient.query.filter_by(profile_id=profile).order_by(Ingredient.name).all()
+    ingredients = Ingredient.query.order_by(Ingredient.name).all()
     return render_template("inventory/list.html", items=items, ingredients=ingredients)
 
 
 @inventory_bp.route("/inventory/<int:ingredient_id>/set", methods=["POST"])
 def set_inventory(ingredient_id):
-    profile = current_profile()
-    ing = Ingredient.query.filter_by(id=ingredient_id, profile_id=profile).first_or_404()
+    ing = Ingredient.query.get_or_404(ingredient_id)
 
     qty = _float(request.form.get("quantity_on_hand"))
     threshold = _float(request.form.get("low_stock_threshold"))
@@ -36,7 +34,7 @@ def set_inventory(ingredient_id):
         flash("Threshold cannot be negative.", "error")
         return redirect(url_for("inventory.list_inventory"))
 
-    item = get_or_create_item(profile, ingredient_id)
+    item = get_or_create_item(ingredient_id)
     item.quantity_on_hand = qty
     if threshold is not None:
         item.low_stock_threshold = threshold
@@ -47,7 +45,6 @@ def set_inventory(ingredient_id):
 
 @inventory_bp.route("/inventory/add", methods=["POST"])
 def add_stock():
-    profile = current_profile()
     ingredient_id = request.form.get("ingredient_id", type=int)
     qty = _float(request.form.get("quantity"))
 
@@ -55,12 +52,12 @@ def add_stock():
         flash("Ingredient and a positive quantity are required.", "error")
         return redirect(url_for("inventory.list_inventory"))
 
-    ing = Ingredient.query.filter_by(id=ingredient_id, profile_id=profile).first()
+    ing = Ingredient.query.get(ingredient_id)
     if not ing:
         flash("Ingredient not found.", "error")
         return redirect(url_for("inventory.list_inventory"))
 
-    item = get_or_create_item(profile, ingredient_id)
+    item = get_or_create_item(ingredient_id)
     item.quantity_on_hand += qty
     db.session.commit()
     flash(f"Added {qty:g} {ing.serving_unit} to '{ing.name}'.", "success")
@@ -71,9 +68,8 @@ def add_stock():
 
 @inventory_bp.route("/api/inventory", methods=["GET"])
 def api_list():
-    profile = current_profile()
     items = (
-        InventoryItem.query.filter_by(profile_id=profile)
+        InventoryItem.query
         .join(Ingredient, InventoryItem.ingredient_id == Ingredient.id)
         .order_by(Ingredient.name).all()
     )
@@ -82,8 +78,7 @@ def api_list():
 
 @inventory_bp.route("/api/inventory/<int:ingredient_id>", methods=["PUT"])
 def api_set(ingredient_id):
-    profile = current_profile()
-    Ingredient.query.filter_by(id=ingredient_id, profile_id=profile).first_or_404()
+    Ingredient.query.get_or_404(ingredient_id)
     data = request.get_json() or {}
 
     errors = {}
@@ -100,7 +95,7 @@ def api_set(ingredient_id):
     if errors:
         return jsonify({"errors": errors}), 422
 
-    item = get_or_create_item(profile, ingredient_id)
+    item = get_or_create_item(ingredient_id)
     if qty is not None:
         item.quantity_on_hand = qty
     if threshold is not None:
@@ -111,7 +106,6 @@ def api_set(ingredient_id):
 
 @inventory_bp.route("/api/inventory/add", methods=["POST"])
 def api_add():
-    profile = current_profile()
     data = request.get_json() or {}
 
     errors = {}
@@ -126,11 +120,11 @@ def api_add():
     if errors:
         return jsonify({"errors": errors}), 422
 
-    ing = Ingredient.query.filter_by(id=ingredient_id, profile_id=profile).first()
+    ing = Ingredient.query.get(ingredient_id)
     if not ing:
         return jsonify({"errors": {"ingredientId": "Ingredient not found."}}), 422
 
-    item = get_or_create_item(profile, ingredient_id)
+    item = get_or_create_item(ingredient_id)
     item.quantity_on_hand += qty
     db.session.commit()
     return jsonify(item.to_dict())
