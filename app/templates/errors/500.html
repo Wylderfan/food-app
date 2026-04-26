@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+
+{% block title %}500 — {{ config.APP_NAME }}{% endblock %}
+
+{% block content %}
+<div class="flex flex-col items-center justify-center mt-24 text-center">
+  <h1 class="text-6xl font-bold text-gray-700 mb-4">500</h1>
+  <p class="text-gray-400 mb-6">Something went wrong on our end.</p>
+  <a href="/" class="text-indigo-400 hover:text-indigo-300 text-sm">Back to Dashboard</a>
+</div>
+{% endblock %}
