@@ -2,20 +2,23 @@ import os
 from flask import Flask, render_template
 from flask_sqlalchemy import SQLAlchemy
 from dotenv import load_dotenv
-from config import configs
 
 load_dotenv()
+from config import configs
 
 db = SQLAlchemy()
 
 
-def create_app(config_name=None):
+def create_app(config_name=None, config_overrides=None):
     """App factory. Reads FLASK_ENV to select config, wires up db, blueprints, and error handlers."""
     app = Flask(__name__, instance_relative_config=True)
 
     if config_name is None:
         config_name = os.getenv("FLASK_ENV", "development")
     app.config.from_object(configs[config_name])
+
+    if config_overrides:
+        app.config.update(config_overrides)
 
     db.init_app(app)
 
@@ -25,13 +28,14 @@ def create_app(config_name=None):
     from app.blueprints.main import main_bp
     from app.blueprints.ingredients import ingredients_bp
     from app.blueprints.recipes import recipes_bp
-    from app.blueprints.tracking import tracking_bp
     from app.blueprints.inventory import inventory_bp
     from app.blueprints.shopping import shopping_bp
     app.register_blueprint(main_bp)
     app.register_blueprint(ingredients_bp)
     app.register_blueprint(recipes_bp)
-    app.register_blueprint(tracking_bp)
+    if app.config["ENABLE_NUTRITION"]:
+        from app.blueprints.tracking import tracking_bp
+        app.register_blueprint(tracking_bp)
     app.register_blueprint(inventory_bp)
     app.register_blueprint(shopping_bp)
 

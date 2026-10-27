@@ -16,7 +16,7 @@
       <a href="/recipes/{{ recipe.id }}/edit"
          class="bg-gray-700 hover:bg-gray-600 text-sm px-4 py-2 rounded text-gray-200 transition-colors">Edit</a>
       <form method="POST" action="/recipes/{{ recipe.id }}/delete"
-            onsubmit="return confirm('Delete \'{{ recipe.name }}\'?')">
+            onsubmit="return confirm('Delete this item? This cannot be undone.')">
         <button type="submit"
                 class="bg-gray-700 hover:bg-red-900 text-sm px-4 py-2 rounded text-gray-400 hover:text-red-300 transition-colors">
           Delete
@@ -25,6 +25,7 @@
     </div>
   </div>
 
+{% if config.ENABLE_NUTRITION %}
   {# Macro summary cards #}
   <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
     {% set cards = [
@@ -43,18 +44,19 @@
     {% endfor %}
   </div>
 
+{% endif %}
   <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-8 text-center text-sm text-gray-400">
     <div class="bg-gray-900 border border-gray-800 rounded px-3 py-2">
       <span class="text-gray-500 text-xs">Servings</span><br>
       <span class="text-gray-200">{{ recipe.total_servings | int if recipe.total_servings == recipe.total_servings | int else recipe.total_servings }}</span>
     </div>
-    {% if per_serving.fiber %}
+    {% if config.ENABLE_NUTRITION and per_serving.fiber %}
     <div class="bg-gray-900 border border-gray-800 rounded px-3 py-2">
       <span class="text-gray-500 text-xs">Fiber / serving</span><br>
       <span class="text-gray-200">{{ per_serving.fiber | round(1) }}g</span>
     </div>
     {% endif %}
-    {% if per_serving.sugar %}
+    {% if config.ENABLE_NUTRITION and per_serving.sugar %}
     <div class="bg-gray-900 border border-gray-800 rounded px-3 py-2">
       <span class="text-gray-500 text-xs">Sugar / serving</span><br>
       <span class="text-gray-200">{{ per_serving.sugar | round(1) }}g</span>

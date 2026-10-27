@@ -27,16 +27,18 @@
   </form>
 
   {% if ingredients %}
-  <div class="bg-gray-900 rounded-lg border border-gray-800 overflow-hidden">
+  <div class="bg-gray-900 rounded-lg border border-gray-800 overflow-x-auto">
     <table class="w-full text-sm">
       <thead class="bg-gray-800 text-gray-400 text-xs uppercase tracking-wide">
         <tr>
           <th class="text-left px-4 py-3">Name</th>
-          <th class="text-left px-4 py-3">Serving</th>
+          <th class="text-left px-4 py-3">Stock unit</th>
+{% if config.ENABLE_NUTRITION %}
           <th class="text-right px-4 py-3">Cal</th>
           <th class="text-right px-4 py-3">Protein</th>
           <th class="text-right px-4 py-3">Carbs</th>
           <th class="text-right px-4 py-3">Fat</th>
+{% endif %}
           <th class="px-4 py-3"></th>
         </tr>
       </thead>
@@ -50,19 +52,21 @@
             {% endif %}
           </td>
           <td class="px-4 py-3 text-gray-400 whitespace-nowrap">
-            {{ ing.serving_size | int if ing.serving_size == ing.serving_size | int else ing.serving_size }}
+            {% if config.ENABLE_NUTRITION %}{{ ing.serving_size | int if ing.serving_size == ing.serving_size | int else ing.serving_size }}{% endif %}
             {{ ing.serving_unit }}
           </td>
+{% if config.ENABLE_NUTRITION %}
           <td class="px-4 py-3 text-right text-gray-200">{{ ing.calories | round(1) }}</td>
           <td class="px-4 py-3 text-right text-blue-400">{{ ing.protein | round(1) }}g</td>
           <td class="px-4 py-3 text-right text-yellow-400">{{ ing.carbs | round(1) }}g</td>
           <td class="px-4 py-3 text-right text-red-400">{{ ing.fat | round(1) }}g</td>
+{% endif %}
           <td class="px-4 py-3">
             <div class="flex items-center justify-end gap-3">
               <a href="/ingredients/{{ ing.id }}/edit"
                  class="text-gray-400 hover:text-indigo-400 text-xs transition-colors">Edit</a>
               <form method="POST" action="/ingredients/{{ ing.id }}/delete"
-                    onsubmit="return confirm('Delete \'{{ ing.name }}\'? This cannot be undone.')">
+                    onsubmit="return confirm('Delete this item? This cannot be undone.')">
                 <button type="submit"
                         class="text-gray-400 hover:text-red-400 text-xs transition-colors">Delete</button>
               </form>

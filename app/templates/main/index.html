@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="max-w-4xl mx-auto">
+<h1 class="text-2xl font-semibold mb-2">Your pantry</h1>
+<p class="text-gray-400 mb-6">Keep a rough record of what you have, save recipes, and build your shopping list.</p>
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+{% for label, count, path in [('Ingredients', ingredient_count, '/ingredients'), ('In-stock items', stocked_count, '/inventory'), ('Recipes', recipe_count, '/recipes'), ('To buy', shopping_count, '/shopping-list')] %}
+<a href="{{ path }}" class="block rounded border border-gray-700 bg-gray-900 p-5"><span class="text-2xl">{{ count }}</span><br>{{ label }}</a>
+{% endfor %}
+</div>
+<p class="text-sm text-gray-400 mt-6">Start by adding an ingredient and its stock unit. Recipe quantities must use that same unit; automatic unit conversion is not available yet.</p>
+<p class="text-sm text-gray-400 mt-3">For now, adjust pantry quantities manually after cooking. Cooking events, undo, and favorite-ranked recipe suggestions are planned next.</p>
+</section>
+{% endblock %}

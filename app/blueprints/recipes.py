@@ -1,5 +1,4 @@
-import json
-from flask import Blueprint, jsonify, request, render_template, redirect, url_for, flash
+from flask import Blueprint, jsonify, request, render_template, redirect, url_for, flash, current_app
 from app import db
 from app.models import Ingredient, Recipe, RecipeIngredient, DailyLogEntry
 from app.utils.helpers import _float
@@ -13,6 +12,8 @@ recipes_bp = Blueprint("recipes", __name__)
 @recipes_bp.route("/recipes")
 def list_recipes():
     recipes = Recipe.query.order_by(Recipe.name).all()
+    if not current_app.config["ENABLE_NUTRITION"]:
+        return render_template("recipes/list.html", recipes=recipes)
     macro_data = {}
     for r in recipes:
         try:
@@ -26,6 +27,8 @@ def list_recipes():
 @recipes_bp.route("/recipes/<int:id>")
 def view_recipe(id):
     recipe = Recipe.query.get_or_404(id)
+    if not current_app.config["ENABLE_NUTRITION"]:
+        return render_template("recipes/detail.html", recipe=recipe)
     try:
         total, per_serving = calculate_recipe_macros(recipe)
     except ValueError as e:
@@ -97,11 +100,9 @@ def delete_recipe(id):
         return redirect(url_for("recipes.view_recipe", id=id))
     name = recipe.name
     log_count = DailyLogEntry.query.filter_by(recipe_id=id).count()
-    # NOTE: cascade-deleting log entries here does NOT restore the inventory
-    # those entries deducted. Per-entry deletes (tracking.delete_log) do
-    # restore. Decide if recipe deletion should also restore — would mean
-    # iterating entries before delete and calling apply_recipe_to_inventory
-    # with deduct=False on each.
+    if log_count:
+        flash("Cannot delete a recipe with archived meal history. Keep it until history migration is available.", "error")
+        return redirect(url_for("recipes.view_recipe", id=id))
     db.session.delete(recipe)
     db.session.commit()
     msg = f"'{name}' deleted."
@@ -116,6 +117,8 @@ def delete_recipe(id):
 @recipes_bp.route("/api/recipes", methods=["GET"])
 def api_list():
     recipes = Recipe.query.order_by(Recipe.name).all()
+    if not current_app.config["ENABLE_NUTRITION"]:
+        return jsonify([r.to_dict() for r in recipes])
     result = []
     for r in recipes:
         macro_error = None
@@ -180,6 +183,8 @@ def api_delete(id):
     if used_in:
         parent = Recipe.query.get(used_in.recipe_id)
         return jsonify({"error": f"Used as sub-recipe in '{parent.name}'"}), 409
+    if DailyLogEntry.query.filter_by(recipe_id=id).first():
+        return jsonify({"error": "Recipe has archived meal history; deletion is blocked to preserve it."}), 409
     db.session.delete(recipe)
     db.session.commit()
     return jsonify({"deleted": id})
@@ -192,37 +197,26 @@ def _form_context(exclude_id):
     recipes = Recipe.query.order_by(Recipe.name).all()
 
     ingredients_json = {
-        str(i.id): {
-            "name": i.name,
-            "brand": i.brand,
-            "servingSize": i.serving_size,
-            "servingUnit": i.serving_unit,
-            "calories": i.calories,
-            "protein": i.protein,
-            "carbs": i.carbs,
-            "fat": i.fat,
-        }
+        str(i.id): {"name": i.name, "brand": i.brand, "servingUnit": i.serving_unit}
         for i in ingredients
     }
-
-    recipes_json = {}
-    for r in recipes:
-        if r.id == exclude_id:
-            continue
-        try:
-            total, _ = calculate_recipe_macros(r)
-        except ValueError:
-            total = dict(calories=0, protein=0, carbs=0, fat=0, fiber=0, sugar=0)
-        recipes_json[str(r.id)] = {
-            "name": r.name,
-            "totalServings": r.total_servings,
-            "totalMacros": total,
-        }
-
-    return {
-        "ingredients_json": json.dumps(ingredients_json),
-        "recipes_json": json.dumps(recipes_json),
+    recipes_json = {
+        str(r.id): {"name": r.name, "totalServings": r.total_servings}
+        for r in recipes if r.id != exclude_id
     }
+    if current_app.config["ENABLE_NUTRITION"]:
+        for i in ingredients:
+            ingredients_json[str(i.id)].update(servingSize=i.serving_size,
+                calories=i.calories, protein=i.protein, carbs=i.carbs, fat=i.fat)
+        for r in recipes:
+            if r.id == exclude_id:
+                continue
+            try:
+                total, _ = calculate_recipe_macros(r)
+            except ValueError:
+                total = dict(calories=0, protein=0, carbs=0, fat=0, fiber=0, sugar=0)
+            recipes_json[str(r.id)]["totalMacros"] = total
+    return {"ingredients_json": ingredients_json, "recipes_json": recipes_json}
 
 
 def _recipe_items_for_form(recipe):
@@ -287,16 +281,13 @@ def _replace_recipe_items(recipe_id, items):
 
 
 def _recipe_detail_dict(recipe):
-    macro_error = None
-    try:
-        total, per_serving = calculate_recipe_macros(recipe)
-    except ValueError as e:
-        total = per_serving = dict(calories=0, protein=0, carbs=0, fat=0, fiber=0, sugar=0)
-        macro_error = str(e)
     d = recipe.to_dict()
-    d["macros"] = {"total": total, "perServing": per_serving}
-    if macro_error:
-        d["macroError"] = macro_error
+    if current_app.config["ENABLE_NUTRITION"]:
+        try:
+            total, per_serving = calculate_recipe_macros(recipe)
+            d["macros"] = {"total": total, "perServing": per_serving}
+        except ValueError as e:
+            d["macroError"] = str(e)
     d["ingredients"] = [
         {
             "id": ri.id,
