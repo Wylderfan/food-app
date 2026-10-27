@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, request, render_template, redirect, url_for, flash, current_app
+from flask import Blueprint, jsonify, request, render_template, redirect, url_for, flash, current_app, abort
 from app import db
 from app.models import Ingredient, RecipeIngredient
 from app.utils.helpers import _float
@@ -88,6 +88,8 @@ def delete_ingredient(id):
 
 @ingredients_bp.route("/api/ingredients/search-external", methods=["GET"])
 def api_search_external():
+    if not current_app.config["ENABLE_NUTRITION"]:
+        abort(404)
     query = request.args.get("query", "").strip()
     if not query:
         return jsonify({"results": []})
@@ -109,7 +111,7 @@ def api_list():
 
 @ingredients_bp.route("/api/ingredients", methods=["POST"])
 def api_create():
-    data = request.get_json() or {}
+    data = _pantry_data(request.get_json() or {})
     errors = _validate_data(data)
     if errors:
         return jsonify({"errors": errors}), 422
@@ -140,7 +142,7 @@ def api_get(id):
 @ingredients_bp.route("/api/ingredients/<int:id>", methods=["PUT"])
 def api_update(id):
     ing = Ingredient.query.get_or_404(id)
-    data = request.get_json() or {}
+    data = _pantry_data(request.get_json() or {}, ing)
     errors = _validate_data(data)
     if errors:
         return jsonify({"errors": errors}), 422
@@ -176,6 +178,7 @@ def api_delete(id):
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _validate_form(form):
+    form = _pantry_form(form)
     errors = {}
     if not form.get("name", "").strip():
         errors["name"] = "Name is required."
@@ -212,6 +215,7 @@ def _validate_data(data):
 
 
 def _ingredient_from_form(form):
+    form = _pantry_form(form)
     return Ingredient(
         name=form["name"].strip(),
         brand=form.get("brand", "").strip() or None,
@@ -221,13 +225,14 @@ def _ingredient_from_form(form):
         protein=_float(form.get("protein")) or 0,
         carbs=_float(form.get("carbs")) or 0,
         fat=_float(form.get("fat")) or 0,
-        fiber=_float(form.get("fiber")) if form.get("fiber") else None,
-        sugar=_float(form.get("sugar")) if form.get("sugar") else None,
+        fiber=_float(form.get("fiber")) if form.get("fiber") not in (None, "") else None,
+        sugar=_float(form.get("sugar")) if form.get("sugar") not in (None, "") else None,
         low_stock_threshold=_float(form.get("low_stock_threshold")) or 0,
     )
 
 
 def _apply_form(ing, form):
+    form = _pantry_form(form, ing)
     ing.name = form["name"].strip()
     ing.brand = form.get("brand", "").strip() or None
     ing.serving_size = _float(form["serving_size"])
@@ -236,6 +241,28 @@ def _apply_form(ing, form):
     ing.protein = _float(form.get("protein")) or 0
     ing.carbs = _float(form.get("carbs")) or 0
     ing.fat = _float(form.get("fat")) or 0
-    ing.fiber = _float(form.get("fiber")) if form.get("fiber") else None
-    ing.sugar = _float(form.get("sugar")) if form.get("sugar") else None
+    ing.fiber = _float(form.get("fiber")) if form.get("fiber") not in (None, "") else None
+    ing.sugar = _float(form.get("sugar")) if form.get("sugar") not in (None, "") else None
     ing.low_stock_threshold = _float(form.get("low_stock_threshold")) or 0
+
+
+_NUTRIENTS = ("calories", "protein", "carbs", "fat", "fiber", "sugar")
+
+
+def _pantry_data(data, ingredient=None):
+    """Ignore hidden legacy nutrition input and preserve stored values on edit."""
+    data = dict(data)
+    if not current_app.config["ENABLE_NUTRITION"]:
+        data["servingSize"] = ingredient.serving_size if ingredient else 1
+        for key in _NUTRIENTS:
+            data[key] = getattr(ingredient, key) if ingredient else (None if key in ("fiber", "sugar") else 0)
+    return data
+
+
+def _pantry_form(form, ingredient=None):
+    data = dict(form)
+    if not current_app.config["ENABLE_NUTRITION"]:
+        data["serving_size"] = ingredient.serving_size if ingredient else 1
+        for key in _NUTRIENTS:
+            data[key] = getattr(ingredient, key) if ingredient else (None if key in ("fiber", "sugar") else 0)
+    return data

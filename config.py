@@ -3,12 +3,13 @@ import os
 
 class Config:
     SECRET_KEY = os.getenv("FLASK_SECRET_KEY", "change-me")
-    APP_NAME = os.getenv("APP_NAME", "My App")
+    APP_NAME = os.getenv("APP_NAME", "Pantry")
     TAILSCALE_IP = os.getenv("TAILSCALE_IP", "127.0.0.1")
     PORT = int(os.getenv("PORT", 5000))
     PROFILES = os.getenv("PROFILES", "Default")
     SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL", "sqlite:///app.db")
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    ENABLE_NUTRITION = os.getenv("ENABLE_NUTRITION", "false").lower() in {"1", "true", "yes"}
     USDA_API_KEY = os.getenv("USDA_API_KEY", "DEMO_KEY")
 
 

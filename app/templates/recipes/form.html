@@ -61,6 +61,7 @@
       </div>
     </div>
 
+{% if config.ENABLE_NUTRITION %}
     {# Live macro preview #}
     <div class="border-t border-gray-800 pt-4">
       <p class="text-xs text-gray-500 mb-3 uppercase tracking-wide">Macro Preview</p>
@@ -86,6 +87,7 @@
       </div>
     </div>
 
+{% endif %}
     {# Instructions #}
     <div class="border-t border-gray-800 pt-4">
       <label class="block text-xs text-gray-400 mb-1">Instructions <span class="text-gray-600">optional</span></label>
@@ -108,17 +110,20 @@
 </div>
 
 <script>
-const INGREDIENTS = {{ ingredients_json | safe }};
-const RECIPES = {{ recipes_json | safe }};
+const INGREDIENTS = {{ ingredients_json | tojson }};
+const RECIPES = {{ recipes_json | tojson }};
 const INITIAL_ITEMS = {{ initial_items | tojson }};
 
+function escapeHTML(value) {
+  return String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
 const INPUT_CLS = "bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-sm text-gray-100 focus:outline-none focus:border-indigo-500 transition-colors";
 
 function makeIngOptions(selectedId) {
   let html = '<option value="">— ingredient —</option>';
   Object.entries(INGREDIENTS).forEach(([id, ing]) => {
     const label = ing.name + (ing.brand ? ` (${ing.brand})` : '');
-    html += `<option value="${id}" ${parseInt(id) === selectedId ? 'selected' : ''}>${label}</option>`;
+    html += `<option value="${id}" ${parseInt(id) === selectedId ? 'selected' : ''}>${escapeHTML(label)}</option>`;
   });
   return html;
 }
@@ -126,7 +131,7 @@ function makeIngOptions(selectedId) {
 function makeRecOptions(selectedId) {
   let html = '<option value="">— sub-recipe —</option>';
   Object.entries(RECIPES).forEach(([id, rec]) => {
-    html += `<option value="${id}" ${parseInt(id) === selectedId ? 'selected' : ''}>${rec.name}</option>`;
+    html += `<option value="${id}" ${parseInt(id) === selectedId ? 'selected' : ''}>${escapeHTML(rec.name)}</option>`;
   });
   return html;
 }
@@ -134,7 +139,7 @@ function makeRecOptions(selectedId) {
 function addRow(type = 'ingredient', refId = null, quantity = '', unit = '') {
   const container = document.getElementById('rows-container');
   const div = document.createElement('div');
-  div.className = 'ingredient-row flex gap-2 items-center';
+  div.className = 'ingredient-row flex flex-wrap gap-2 items-center';
 
   const refOptions = type === 'ingredient' ? makeIngOptions(refId) : makeRecOptions(refId);
 
@@ -147,9 +152,9 @@ function addRow(type = 'ingredient', refId = null, quantity = '', unit = '') {
       ${refOptions}
     </select>
     <input type="number" name="item_quantity" class="row-qty ${INPUT_CLS} w-20 flex-shrink-0"
-           value="${quantity}" step="any" min="0" placeholder="Qty">
+           value="${escapeHTML(quantity)}" step="any" min="0" placeholder="Qty">
     <input type="text" name="item_unit" class="row-unit ${INPUT_CLS} w-16 flex-shrink-0 text-gray-400"
-           value="${unit}" placeholder="unit" readonly>
+           value="${escapeHTML(unit)}" placeholder="unit" readonly>
     <button type="button" onclick="removeRow(this)"
             class="text-gray-500 hover:text-red-400 text-lg leading-none px-1 flex-shrink-0 transition-colors">×</button>
   `;
@@ -210,6 +215,7 @@ function updateNoRowsMsg() {
 }
 
 function recalculate() {
+  if (!document.getElementById("p-total-cal")) return;
   const totalServings = parseFloat(document.getElementById('total_servings').value) || 1;
   const totals = { calories: 0, protein: 0, carbs: 0, fat: 0 };
 

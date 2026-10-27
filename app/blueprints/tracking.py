@@ -45,7 +45,7 @@ def _parse_date_loose(s, fallback=None):
 
 # ── UI ────────────────────────────────────────────────────────────────────────
 
-@tracking_bp.route("/")
+@tracking_bp.route("/tracking")
 def daily_log():
     profile = current_profile()
     sel_date = _parse_date_loose(request.args.get("date"))

@@ -1,165 +1,135 @@
-# Flask Web App Starter
+# Food App: pantry first
 
-A minimal Flask scaffold with SQLAlchemy, multi-profile support, and Tailscale-aware binding. Fork this for every new project — nothing to strip out, nothing missing.
+A small Flask application for a shared household ingredient catalogue, pantry,
+recipes, and shopping list. Designed for a phone browser on a trusted private
+network. This branch takes calorie tracking out of the default workflow so that
+adding an ingredient does not require a nutrition database or USDA account.
 
----
+**Status:** a working prototype being refactored, not a completed meal-planning
+product. Existing nutrition data is retained. No database tables are dropped.
 
-## Structure
+## What works now
 
-```
-app/
-├── __init__.py          # App factory — db, blueprints, context processor, error handlers
-├── models.py            # Empty — add your models here
-├── blueprints/
-│   └── main.py          # Dashboard (/) + POST /switch-profile
-├── utils/
-│   └── helpers.py       # current_profile(), _int(), _float()
-└── templates/
-    ├── base.html        # Dark Tailwind layout, nav, flash messages, profile switcher
-    ├── main/index.html  # Placeholder dashboard
-    └── errors/          # 404 and 500 pages
-config.py                # Dev/Prod configs, all env vars with defaults
-run.py                   # Dev entry point — binds to TAILSCALE_IP
-requirements.txt
-.env.example
-```
+- Create and edit ingredients manually, using a consistent stock unit.
+- Record stock on hand and low-stock thresholds.
+- Save recipes, including nested sub-recipes, quantities, portions and instructions.
+- Add individual ingredients or recipe shortfalls to a shopping list.
+- Mark purchases to add stock; unmarking reverses that addition.
+- Use the pantry-first home page without calorie targets or a nutrition API.
 
----
+**Not yet implemented:** favorite ratings and ranked cookable recipes; a dedicated
+“Cook this recipe” event with snapshot-based undo; unit conversion; purchase prices
+and spending history. Stock is manually adjusted in the default workflow. See
+[the staged roadmap](PROJECT.md) rather than assuming these features exist.
 
-## Forking this for a new project
+## Quick start (a new, disposable local database)
 
-1. Copy or clone this repo into a new directory.
-2. Create and activate a virtualenv:
-   ```bash
-   python3 -m venv .venv && source .venv/bin/activate
-   pip install -r requirements.txt
-   ```
-3. Copy `.env.example` to `.env` and fill in your values:
-   ```bash
-   cp .env.example .env
-   ```
-4. Set `APP_NAME` to your project name — it appears in the nav and page titles.
-5. Add your models to `app/models.py`. Every model needs a `profile_id` column (see the comment there).
-6. Add a blueprint for your feature under `app/blueprints/`, register it in `app/__init__.py`.
-7. Replace `app/templates/main/index.html` with your real dashboard.
+Python 3.11 or newer is recommended for the documented development workflow.
+From this repository:
 
-The database (`instance/app.db`) is created automatically on first run.
-
----
-
-## Environment variables
-
-| Variable           | Default       | Description                        |
-|--------------------|---------------|------------------------------------|
-| `FLASK_SECRET_KEY` | `change-me`   | Session signing key                |
-| `FLASK_ENV`        | `development` | `development` or `production`      |
-| `APP_NAME`         | `My App`      | Shown in nav and page titles       |
-| `TAILSCALE_IP`     | `127.0.0.1`   | IP to bind to                      |
-| `PORT`             | `5000`        | Port to bind to                    |
-| `PROFILES`         | `Default`     | Comma-separated profile names      |
-
----
-
-## Running
-
-### Loopback only (local development, no Tailscale)
-
-Leave `TAILSCALE_IP` unset or set it to `127.0.0.1`:
-
-```bash
+```sh
+python3 -m venv .venv
 source .venv/bin/activate
+python -m pip install -r requirements.txt
+cp .env.example .env
+```
+
+Edit `.env`: set a private random `FLASK_SECRET_KEY`, retain
+`TAILSCALE_IP=127.0.0.1` for local development, and choose a free `PORT`. Leave
+`ENABLE_NUTRITION=false`. Do not commit `.env` or database files.
+
+```sh
 python run.py
 ```
 
-The app binds to `127.0.0.1:5000`. Open `http://127.0.0.1:5000` in your browser. Only your machine can reach it.
+Open the address printed at startup. Flask-SQLAlchemy creates missing tables on
+startup. With the default `sqlite:///app.db`, the file is `instance/app.db` relative
+to the app's instance directory, **not** a file in the shell's current directory.
+For an existing installation, read the backup section before running this branch
+against its database.
 
-### Tailscale binding (accessible from your Tailscale network)
+## Configuration
 
-Find your Tailscale IP:
+Environment variables take precedence over `.env` values. Restart the process
+after changing configuration.
 
-```bash
-tailscale ip -4
+| Variable | Purpose |
+| --- | --- |
+| `FLASK_ENV` | `development` or `production`; selects application configuration. |
+| `FLASK_SECRET_KEY` | Session signing key. Replace the development placeholder. |
+| `APP_NAME` | Name displayed in the interface. |
+| `TAILSCALE_IP` | Bind address for `run.py`; default is loopback `127.0.0.1`. |
+| `PORT` | Port for `run.py`; default is `5000` unless `.env` overrides it. |
+| `DATABASE_URL` | SQLAlchemy URL; default `sqlite:///app.db`. Absolute SQLite paths use `sqlite:////absolute/path/app.db`. |
+| `ENABLE_NUTRITION` | Default `false`. `true`, `yes` or `1` explicitly enables the retained legacy nutrition workflows. |
+| `PROFILES` | Comma-separated labels for legacy nutrition logs/goals, not separate pantry accounts. |
+| `USDA_API_KEY` | Only needed for optional legacy USDA search; not needed by the pantry-first workflow. |
+
+Profiles are **not authentication**. Ingredients, recipes, pantry and shopping
+are shared across profiles. See [architecture and data flow](docs/ARCHITECTURE.md).
+
+## Phone access and deployment boundaries
+
+For a private test, choose the server's actual Tailscale IP and connect the phone
+to the same permitted tailnet. A bind address controls where a process listens;
+it does not create accounts, authorization, encryption or firewall rules. Access
+also depends on Tailscale policy and network configuration.
+
+For a longer-running process, use a WSGI server rather than Flask's development
+server. Example, after setting production configuration in `.env`:
+
+```sh
+gunicorn --bind 100.x.x.x:5000 'app:create_app()'
 ```
 
-Set it in `.env`:
+Replace the address with a real address on the server. Gunicorn's bind argument,
+not `TAILSCALE_IP` or `PORT`, controls this example. Stop a foreground process with
+Ctrl-C; do not kill unrelated Gunicorn processes by name.
 
-```
-TAILSCALE_IP=100.x.x.x
-```
+**Security limits:** this prototype has no login/authorization system and no
+CSRF protection for mutations. Anyone who can reach it can change shared data;
+a private network alone does not eliminate browser-based request risks. Do not
+expose it to the public internet. Use test data until these gaps are addressed.
+The interface currently loads Tailwind from a CDN, so completely offline styling
+is not guaranteed. Serving compiled local CSS is a future packaging improvement.
 
-Then run:
+## Existing data, backups and rollback
 
-```bash
-source .venv/bin/activate
-python run.py
-```
+1. Stop the running app before copying its SQLite database so the backup is
+   consistent. For another database engine, use that engine's backup procedure.
+2. Preserve the complete database, `.env` securely, current Git commit, and current
+   dependency versions. Never commit the backup or credentials.
+3. Test this branch against a **copy** of the database first by setting a separate
+   `DATABASE_URL`. Confirm ingredient, recipe, pantry and shopping records remain.
+4. Nutrition columns, goal records and meal history remain in the schema while
+   the feature is disabled. Disabling the interface does not undo old stock
+   deductions, delete logs, or rewrite existing quantities.
+5. `db.create_all()` creates missing tables; it is **not** a migration framework
+   and will not upgrade arbitrary old schema layouts. There is no destructive
+   migration in this refactor. If a legacy schema differs, stop and prepare an
+   explicit migration instead of deleting the database.
 
-The app binds to your Tailscale IP on port 5000. Any device on your Tailscale network can reach it at `http://100.x.x.x:5000`. Your machine's LAN and the public internet cannot.
+Do not treat switching Git branches as a database rollback. Keep the pre-change
+backup and restore only deliberately, while the app is stopped. Existing data
+has not been inspected or migrated on your server by this project change.
 
----
+## Development checks
 
-## Verifying the binding
-
-After starting the server, check what address it actually bound to — the Flask dev server prints this on startup:
-
-```
- * Running on http://100.x.x.x:5000
-```
-
-To confirm from the terminal without a browser:
-
-```bash
-# Loopback
-curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:5000/
-
-# Tailscale
-curl -s -o /dev/null -w "%{http_code}" http://100.x.x.x:5000/
-```
-
-Both should return `200`. A `Connection refused` on the Tailscale address means the IP in `.env` doesn't match what `tailscale ip -4` returns.
-
-To verify the app is **not** reachable on `0.0.0.0` (it never should be):
-
-```bash
-curl -s -o /dev/null -w "%{http_code}" http://0.0.0.0:5000/
+```sh
+python -m unittest discover -s tests -v
+python -m compileall -q app config.py run.py
 ```
 
-This should fail or return a connection error — if it succeeds, check that `TAILSCALE_IP` is set and `run.py` isn't overriding it.
+Tests use isolated databases, not your `.env` database. They cover default-mode
+routing and nutrition boundaries, core flows and preservation of legacy values.
+Passing HTTP/template tests is not a substitute for phone-browser visual testing.
 
----
+## Repository guide
 
-## Multi-profile setup
+- [Architecture and data flows](docs/ARCHITECTURE.md): where features live and what changes stock.
+- [API and feature boundaries](docs/API.md): current routes and disabled legacy behavior.
+- [Pantry-first roadmap](PROJECT.md): next increments and acceptance checks.
+- [Archived nutrition-first plan](docs/archive/nutrition-plan.md): historical design, **not current instructions**.
 
-Set `PROFILES` to a comma-separated list:
-
-```
-PROFILES=Alice,Bob
-```
-
-A dropdown appears in the nav. Selecting a profile stores it in the session. Use `current_profile()` (available in all templates via the context processor, and importable from `app.utils.helpers`) to scope queries to the active profile.
-
----
-
-## Stopping the server
-
-**Dev server (`run.py`):** Press `Ctrl+C` in the terminal where it's running.
-
-**Gunicorn:** Also `Ctrl+C` if running in the foreground. If you started it in the background, find and kill the process:
-
-```bash
-pkill -f "gunicorn"
-# or more precisely:
-lsof -ti :5000 | xargs kill
-```
-
----
-
-## Production
-
-Use gunicorn instead of `run.py`:
-
-```bash
-gunicorn -b 100.x.x.x:5000 "app:create_app()"
-```
-
-Set `FLASK_ENV=production` and use a real `FLASK_SECRET_KEY`.
+The scope of this refactor is a simpler foundation and clear reference material,
+not a rewrite or a complete implementation of the roadmap.

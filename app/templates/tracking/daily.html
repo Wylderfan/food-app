@@ -40,7 +40,7 @@
     </div>
     <div class="flex items-center gap-2">
       {% if sel_date != today %}
-      <a href="/" class="bg-gray-700 hover:bg-gray-600 text-xs px-3 py-1.5 rounded text-gray-200 transition-colors">Today</a>
+      <a href="{{ url_for('tracking.daily_log') }}" class="bg-gray-700 hover:bg-gray-600 text-xs px-3 py-1.5 rounded text-gray-200 transition-colors">Today</a>
       {% endif %}
       <input type="date" id="date-picker" value="{{ sel_date.isoformat() }}"
              onchange="if (this.value) window.location.href='/?date=' + this.value"

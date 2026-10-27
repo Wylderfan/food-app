@@ -1,5 +1,6 @@
 from datetime import datetime
 from app import db
+from flask import current_app
 
 
 class Ingredient(db.Model):
@@ -28,7 +29,7 @@ class Ingredient(db.Model):
     )
 
     def to_dict(self):
-        return {
+        data = {
             "id": self.id,
             "name": self.name,
             "brand": self.brand,
@@ -44,6 +45,11 @@ class Ingredient(db.Model):
             "createdAt": self.created_at.isoformat(),
             "updatedAt": self.updated_at.isoformat(),
         }
+        if not current_app.config["ENABLE_NUTRITION"]:
+            for key in ("servingSize", "calories", "protein", "carbs", "fat", "fiber", "sugar"):
+                data.pop(key)
+        return data
+
 
 
 class Recipe(db.Model):

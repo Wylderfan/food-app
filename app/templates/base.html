@@ -11,20 +11,23 @@
 -->
 <body class="bg-gray-950 text-gray-100 min-h-screen">
 
-  <nav class="bg-gray-900 border-b border-gray-800 px-6 py-3 flex items-center justify-between">
+  <nav class="bg-gray-900 border-b border-gray-800 px-4 py-3 flex flex-wrap gap-3 items-center justify-between">
     <a href="/" class="font-semibold text-white">{{ config.APP_NAME }}</a>
 
-    <div class="flex items-center gap-4">
-      <a href="/" class="text-sm text-gray-300 hover:text-white">Today</a>
+    <div class="flex flex-wrap items-center gap-4">
+      <a href="/" class="text-sm text-gray-300 hover:text-white">Pantry</a>
       <a href="/ingredients" class="text-sm text-gray-300 hover:text-white">Ingredients</a>
       <a href="/recipes" class="text-sm text-gray-300 hover:text-white">Recipes</a>
       <a href="/inventory" class="text-sm text-gray-300 hover:text-white">Inventory</a>
       <a href="/shopping-list" class="text-sm text-gray-300 hover:text-white">Shopping</a>
+      {% if config.ENABLE_NUTRITION %}
+      <a href="/tracking" class="text-sm text-gray-300 hover:text-white">Daily log</a>
       <a href="/goals" class="text-sm text-gray-300 hover:text-white">Goals</a>
+      {% endif %}
       {% block nav_links %}{% endblock %}
 
       {# Profile switcher — only shown when multiple profiles are configured #}
-      {% if profiles | length > 1 %}
+      {% if config.ENABLE_NUTRITION and profiles | length > 1 %}
       <div class="relative" x-data="{ open: false }">
         <button onclick="this.nextElementSibling.classList.toggle('hidden')"
                 class="text-sm text-gray-300 hover:text-white flex items-center gap-1">

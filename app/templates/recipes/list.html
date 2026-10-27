@@ -12,22 +12,24 @@
   </div>
 
   {% if recipes %}
-  <div class="bg-gray-900 rounded-lg border border-gray-800 overflow-hidden">
+  <div class="bg-gray-900 rounded-lg border border-gray-800 overflow-x-auto">
     <table class="w-full text-sm">
       <thead class="bg-gray-800 text-gray-400 text-xs uppercase tracking-wide">
         <tr>
           <th class="text-left px-4 py-3">Name</th>
           <th class="text-right px-4 py-3">Servings</th>
+{% if config.ENABLE_NUTRITION %}
           <th class="text-right px-4 py-3">Cal / serving</th>
           <th class="text-right px-4 py-3">Protein</th>
           <th class="text-right px-4 py-3">Carbs</th>
           <th class="text-right px-4 py-3">Fat</th>
+{% endif %}
           <th class="px-4 py-3"></th>
         </tr>
       </thead>
       <tbody class="divide-y divide-gray-800">
         {% for r in recipes %}
-        {% set ps = macro_data[r.id] %}
+        {% if config.ENABLE_NUTRITION %}{% set ps = macro_data[r.id] %}{% endif %}
         <tr class="hover:bg-gray-800/40 transition-colors">
           <td class="px-4 py-3">
             <a href="/recipes/{{ r.id }}" class="font-medium text-gray-100 hover:text-indigo-400 transition-colors">
@@ -40,16 +42,18 @@
           <td class="px-4 py-3 text-right text-gray-400">
             {{ r.total_servings | int if r.total_servings == r.total_servings | int else r.total_servings }}
           </td>
+{% if config.ENABLE_NUTRITION %}
           <td class="px-4 py-3 text-right text-gray-200">{{ ps.calories | round(0) | int }}</td>
           <td class="px-4 py-3 text-right text-blue-400">{{ ps.protein | round(1) }}g</td>
           <td class="px-4 py-3 text-right text-yellow-400">{{ ps.carbs | round(1) }}g</td>
           <td class="px-4 py-3 text-right text-red-400">{{ ps.fat | round(1) }}g</td>
+{% endif %}
           <td class="px-4 py-3">
             <div class="flex items-center justify-end gap-3">
               <a href="/recipes/{{ r.id }}/edit"
                  class="text-gray-400 hover:text-indigo-400 text-xs transition-colors">Edit</a>
               <form method="POST" action="/recipes/{{ r.id }}/delete"
-                    onsubmit="return confirm('Delete \'{{ r.name }}\'?')">
+                    onsubmit="return confirm('Delete this item? This cannot be undone.')">
                 <button type="submit"
                         class="text-gray-400 hover:text-red-400 text-xs transition-colors">Delete</button>
               </form>
