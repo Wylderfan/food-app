@@ -13,7 +13,7 @@
     {# Basic fields #}
     <div class="space-y-4">
       <div>
-        <label class="block text-xs text-gray-400 mb-1">Name <span class="text-gray-600">*</span></label>
+        <label for="name" class="block text-xs text-gray-400 mb-1">Name <span class="text-gray-600">*</span></label>
         <input type="text" name="name" id="name"
                value="{{ form.get('name', recipe.name if recipe else '') }}"
                class="w-full bg-gray-800 border {{ 'border-red-500' if errors.name else 'border-gray-700' }} rounded px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-indigo-500 transition-colors"
@@ -22,16 +22,16 @@
       </div>
 
       <div>
-        <label class="block text-xs text-gray-400 mb-1">Description <span class="text-gray-600">optional</span></label>
-        <input type="text" name="description"
+        <label for="description" class="block text-xs text-gray-400 mb-1">Description <span class="text-gray-600">optional</span></label>
+        <input type="text" name="description" id="description"
                value="{{ form.get('description', recipe.description if recipe and recipe.description else '') }}"
                class="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-indigo-500 transition-colors">
       </div>
 
       <div class="w-40">
-        <label class="block text-xs text-gray-400 mb-1">Total Servings <span class="text-gray-600">*</span></label>
-        <input type="number" name="total_servings" id="total_servings" step="any" min="0.1"
-               value="{{ form.get('total_servings', recipe.total_servings if recipe else '1') }}"
+        <label for="total_servings" class="block text-xs text-gray-400 mb-1">Total Servings <span class="text-gray-600">*</span></label>
+        <input type="number" name="total_servings" id="total_servings" step="any" min="0.001" placeholder="e.g. 4"
+               value="{{ form.get('total_servings', recipe.total_servings if recipe else '') }}"
                class="w-full bg-gray-800 border {{ 'border-red-500' if errors.total_servings else 'border-gray-700' }} rounded px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-indigo-500 transition-colors"
                required>
         {% if errors.total_servings %}<p class="mt-1 text-xs text-red-400">{{ errors.total_servings }}</p>{% endif %}
@@ -54,6 +54,7 @@
         </div>
       </div>
 
+      {% if errors.get('items') %}<p role="alert" class="text-sm text-red-400 mb-3">{{ errors.get('items') }}</p>{% endif %}
       <div id="rows-container" class="space-y-2"></div>
 
       <div id="no-rows-msg" class="text-sm text-gray-600 py-3 text-center hidden">
@@ -90,8 +91,8 @@
 {% endif %}
     {# Instructions #}
     <div class="border-t border-gray-800 pt-4">
-      <label class="block text-xs text-gray-400 mb-1">Instructions <span class="text-gray-600">optional</span></label>
-      <textarea name="instructions" rows="5"
+      <label for="instructions" class="block text-xs text-gray-400 mb-1">Instructions <span class="text-gray-600">optional</span></label>
+      <textarea name="instructions" id="instructions" rows="5"
                 class="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-indigo-500 transition-colors resize-y">{{ form.get('instructions', recipe.instructions if recipe and recipe.instructions else '') }}</textarea>
     </div>
 
@@ -123,7 +124,7 @@ function makeIngOptions(selectedId) {
   let html = '<option value="">— ingredient —</option>';
   Object.entries(INGREDIENTS).forEach(([id, ing]) => {
     const label = ing.name + (ing.brand ? ` (${ing.brand})` : '');
-    html += `<option value="${id}" ${parseInt(id) === selectedId ? 'selected' : ''}>${escapeHTML(label)}</option>`;
+    html += `<option value="${id}" ${String(id) === String(selectedId) ? 'selected' : ''}>${escapeHTML(label)}</option>`;
   });
   return html;
 }
@@ -131,7 +132,7 @@ function makeIngOptions(selectedId) {
 function makeRecOptions(selectedId) {
   let html = '<option value="">— sub-recipe —</option>';
   Object.entries(RECIPES).forEach(([id, rec]) => {
-    html += `<option value="${id}" ${parseInt(id) === selectedId ? 'selected' : ''}>${escapeHTML(rec.name)}</option>`;
+    html += `<option value="${id}" ${String(id) === String(selectedId) ? 'selected' : ''}>${escapeHTML(rec.name)}</option>`;
   });
   return html;
 }
@@ -144,18 +145,18 @@ function addRow(type = 'ingredient', refId = null, quantity = '', unit = '') {
   const refOptions = type === 'ingredient' ? makeIngOptions(refId) : makeRecOptions(refId);
 
   div.innerHTML = `
-    <select name="item_type" class="row-type ${INPUT_CLS} w-32 flex-shrink-0">
+    <select name="item_type" aria-label="Component type" class="row-type ${INPUT_CLS} w-32 flex-shrink-0">
       <option value="ingredient" ${type === 'ingredient' ? 'selected' : ''}>Ingredient</option>
       <option value="subrecipe" ${type === 'subrecipe' ? 'selected' : ''}>Sub-recipe</option>
     </select>
-    <select name="item_ref_id" class="row-ref ${INPUT_CLS} flex-1 min-w-0">
+    <select name="item_ref_id" aria-label="Ingredient or sub-recipe" class="row-ref ${INPUT_CLS} flex-1 min-w-0">
       ${refOptions}
     </select>
-    <input type="number" name="item_quantity" class="row-qty ${INPUT_CLS} w-20 flex-shrink-0"
-           value="${escapeHTML(quantity)}" step="any" min="0" placeholder="Qty">
-    <input type="text" name="item_unit" class="row-unit ${INPUT_CLS} w-16 flex-shrink-0 text-gray-400"
+    <input type="number" name="item_quantity" aria-label="Quantity" class="row-qty ${INPUT_CLS} w-20 flex-shrink-0"
+           value="${escapeHTML(quantity)}" step="any" min="0.001" placeholder="Qty">
+    <input type="text" name="item_unit" aria-label="Unit" class="row-unit ${INPUT_CLS} w-16 flex-shrink-0 text-gray-400"
            value="${escapeHTML(unit)}" placeholder="unit" readonly>
-    <button type="button" onclick="removeRow(this)"
+    <button type="button" onclick="removeRow(this)" aria-label="Remove component"
             class="text-gray-500 hover:text-red-400 text-lg leading-none px-1 flex-shrink-0 transition-colors">×</button>
   `;
 

@@ -9,14 +9,14 @@
     <div class="flex flex-wrap gap-2">
       {% if ingredients %}
       <button type="button"
-              onclick="document.getElementById('add-ing-form').classList.toggle('hidden'); document.getElementById('add-recipe-form').classList.add('hidden')"
+              onclick="document.getElementById('add-ing-form')?.classList.toggle('hidden'); document.getElementById('add-recipe-form')?.classList.add('hidden')"
               class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm px-4 py-2 rounded transition-colors">
         + Ingredient
       </button>
       {% endif %}
       {% if recipes %}
       <button type="button"
-              onclick="document.getElementById('add-recipe-form').classList.toggle('hidden'); document.getElementById('add-ing-form').classList.add('hidden')"
+              onclick="document.getElementById('add-recipe-form')?.classList.toggle('hidden'); document.getElementById('add-ing-form')?.classList.add('hidden')"
               class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm px-4 py-2 rounded transition-colors">
         + From recipe
       </button>
@@ -27,52 +27,54 @@
   {# Add ingredient form #}
   {% if ingredients %}
   <form method="POST" action="/shopping-list/add-ingredient" id="add-ing-form"
-        class="hidden bg-gray-900 border border-gray-800 rounded-lg p-4 mb-4 flex flex-wrap items-end gap-3">
+        class="{{ '' if active_form == 'ingredient' else 'hidden' }} bg-gray-900 border border-gray-800 rounded-lg p-4 mb-4 flex flex-wrap items-end gap-3">
     <div class="flex-1 min-w-48">
-      <label class="block text-xs text-gray-400 mb-1">Ingredient</label>
-      <select name="ingredient_id" required
+      <label for="shopping-ingredient_id" class="block text-xs text-gray-400 mb-1">Ingredient</label>
+      <select name="ingredient_id" id="shopping-ingredient_id" required
               class="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-indigo-500 transition-colors">
         <option value="">— select —</option>
         {% for ing in ingredients %}
-        <option value="{{ ing.id }}">{{ ing.name }}{% if ing.brand %} ({{ ing.brand }}){% endif %}</option>
+        <option value="{{ ing.id }}" {{ 'selected' if form.get('ingredient_id') == ing.id|string else '' }}>{{ ing.name }}{% if ing.brand %} ({{ ing.brand }}){% endif %}</option>
         {% endfor %}
       </select>
     </div>
     <div class="w-32">
-      <label class="block text-xs text-gray-400 mb-1">Quantity</label>
-      <input type="number" name="quantity" step="any" min="0.001" required
+      <label for="shopping-quantity" class="block text-xs text-gray-400 mb-1">Quantity</label>
+      <input type="number" name="quantity" id="shopping-quantity" value="{{ form.get('quantity', '') }}" step="any" min="0.001" required
              class="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-indigo-500 transition-colors">
     </div>
     <button type="submit"
             class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm px-5 py-2 rounded transition-colors">
       Add
     </button>
+    <button type="button" class="text-sm text-gray-400 px-3 py-2" onclick="this.form.classList.add('hidden')">Cancel</button>
   </form>
   {% endif %}
 
   {# Add from recipe form #}
   {% if recipes %}
   <form method="POST" action="/shopping-list/add-recipe" id="add-recipe-form"
-        class="hidden bg-gray-900 border border-gray-800 rounded-lg p-4 mb-4 flex flex-wrap items-end gap-3">
+        class="{{ '' if active_form == 'recipe' else 'hidden' }} bg-gray-900 border border-gray-800 rounded-lg p-4 mb-4 flex flex-wrap items-end gap-3">
     <div class="flex-1 min-w-48">
-      <label class="block text-xs text-gray-400 mb-1">Recipe</label>
-      <select name="recipe_id" required
+      <label for="shopping-recipe_id" class="block text-xs text-gray-400 mb-1">Recipe</label>
+      <select name="recipe_id" id="shopping-recipe_id" required
               class="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-indigo-500 transition-colors">
         <option value="">— select —</option>
         {% for r in recipes %}
-        <option value="{{ r.id }}">{{ r.name }}</option>
+        <option value="{{ r.id }}" {{ 'selected' if form.get('recipe_id') == r.id|string else '' }}>{{ r.name }}</option>
         {% endfor %}
       </select>
     </div>
     <div class="w-32">
-      <label class="block text-xs text-gray-400 mb-1">Servings</label>
-      <input type="number" name="servings" step="any" min="0.001" required
+      <label for="shopping-servings" class="block text-xs text-gray-400 mb-1">Servings</label>
+      <input type="number" name="servings" id="shopping-servings" value="{{ form.get('servings', '') }}" step="any" min="0.001" required
              class="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-indigo-500 transition-colors">
     </div>
     <button type="submit"
             class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm px-5 py-2 rounded transition-colors">
       Add gaps
     </button>
+    <button type="button" class="text-sm text-gray-400 px-3 py-2" onclick="this.form.classList.add('hidden')">Cancel</button>
     <p class="basis-full text-xs text-gray-500 -mt-1">
       Only ingredients you don't already have enough of will be added.
     </p>

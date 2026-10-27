@@ -133,3 +133,26 @@ Passing HTTP/template tests is not a substitute for phone-browser visual testing
 
 The scope of this refactor is a simpler foundation and clear reference material,
 not a rewrite or a complete implementation of the roadmap.
+
+### Ingredient saves fail on an older database
+
+The pre-refactor history moved `low_stock_threshold` from inventory rows to
+ingredients (commit `952df16`) and removed the old inventory `profile_id` field.
+`create_all()` does not perform these migrations. An old, required inventory
+column without a database default can therefore reject a new stock row. This was
+reproduced with a **simulated historical schema**, not confirmed against any
+user's database. Check the actual server traceback before assuming this is the
+cause of an error. Failed ingredient saves now roll back and retain your form
+entries rather than displaying an unhelpful error page.
+
+For SQLite, inspect only schema metadata with the read-only helper:
+
+```sh
+python scripts/check_sqlite_schema.py /absolute/path/to/instance/app.db
+```
+
+It does not load the application, read pantry rows, or modify the database. An
+exit status of 1 means a known schema warning; 2 means the file could not be
+inspected. This check is not a general migration tool. Back up your database,
+review the reported schema and server traceback, and plan a migration preserving
+existing data. Do not delete your database or remove columns blindly.

@@ -42,13 +42,15 @@
   </div>
   {% endif %}
 
+  {% if errors.save %}<p role="alert" class="mb-4 rounded border border-red-700 p-3 text-red-300">{{ errors.save }}</p>{% endif %}
+
   <form method="POST" id="ingredient-form" class="space-y-5">
 
     <div class="space-y-4">
       {# Name #}
       <div>
-        <label class="block text-xs text-gray-400 mb-1">Name <span class="text-gray-600">*</span></label>
-        <input type="text" name="name"
+        <label for="ingredient-name" class="block text-xs text-gray-400 mb-1">Name <span class="text-gray-600">*</span></label>
+        <input type="text" name="name" id="ingredient-name"
                value="{{ form.get('name', ingredient.name if ingredient else '') }}"
                class="w-full bg-gray-800 border {{ 'border-red-500' if errors.name else 'border-gray-700' }} rounded px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-indigo-500 transition-colors"
                required autofocus>
@@ -57,8 +59,8 @@
 
       {# Brand #}
       <div>
-        <label class="block text-xs text-gray-400 mb-1">Brand <span class="text-gray-600">optional</span></label>
-        <input type="text" name="brand"
+        <label for="ingredient-brand" class="block text-xs text-gray-400 mb-1">Brand <span class="text-gray-600">optional</span></label>
+        <input type="text" name="brand" id="ingredient-brand"
                value="{{ form.get('brand', ingredient.brand if ingredient and ingredient.brand else '') }}"
                class="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-indigo-500 transition-colors">
       </div>
@@ -67,8 +69,8 @@
       <div class="grid grid-cols-2 gap-4">
         {% if config.ENABLE_NUTRITION %}
         <div>
-          <label class="block text-xs text-gray-400 mb-1">Serving Size <span class="text-gray-600">*</span></label>
-          <input type="number" name="serving_size" step="any" min="0.001"
+          <label for="ingredient-serving_size" class="block text-xs text-gray-400 mb-1">Serving Size <span class="text-gray-600">*</span></label>
+          <input type="number" name="serving_size" id="ingredient-serving_size" step="any" min="0.001"
                  value="{{ form.get('serving_size', ingredient.serving_size if ingredient else '') }}"
                  class="w-full bg-gray-800 border {{ 'border-red-500' if errors.serving_size else 'border-gray-700' }} rounded px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-indigo-500 transition-colors"
                  required>
@@ -76,8 +78,8 @@
         </div>
         {% endif %}
         <div>
-          <label class="block text-xs text-gray-400 mb-1">Unit <span class="text-gray-600">g, ml, piece…</span></label>
-          <input type="text" name="serving_unit" placeholder="g"
+          <label for="ingredient-serving_unit" class="block text-xs text-gray-400 mb-1">Unit <span class="text-gray-600">g, ml, piece…</span></label>
+          <input type="text" name="serving_unit" id="ingredient-serving_unit" placeholder="g"
                  value="{{ form.get('serving_unit', ingredient.serving_unit if ingredient else '') }}"
                  class="w-full bg-gray-800 border {{ 'border-red-500' if errors.serving_unit else 'border-gray-700' }} rounded px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-indigo-500 transition-colors"
                  required>
@@ -93,52 +95,52 @@
 
         {# Calories #}
         <div>
-          <label class="block text-xs text-gray-400 mb-1">Calories</label>
-          <input type="number" name="calories" step="any" min="0"
-                 value="{{ form.get('calories', ingredient.calories if ingredient else '0') }}"
+          <label for="ingredient-calories" class="block text-xs text-gray-400 mb-1">Calories</label>
+          <input type="number" name="calories" id="ingredient-calories" step="any" min="0"
+                 value="{{ form.get('calories', ingredient.calories if ingredient else '') }}"
                  class="w-full bg-gray-800 border {{ 'border-red-500' if errors.calories else 'border-gray-700' }} rounded px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-indigo-500 transition-colors">
           {% if errors.calories %}<p class="mt-1 text-xs text-red-400">{{ errors.calories }}</p>{% endif %}
         </div>
 
         {# Protein #}
         <div>
-          <label class="block text-xs text-gray-400 mb-1">Protein (g)</label>
-          <input type="number" name="protein" step="any" min="0"
-                 value="{{ form.get('protein', ingredient.protein if ingredient else '0') }}"
+          <label for="ingredient-protein" class="block text-xs text-gray-400 mb-1">Protein (g)</label>
+          <input type="number" name="protein" id="ingredient-protein" step="any" min="0"
+                 value="{{ form.get('protein', ingredient.protein if ingredient else '') }}"
                  class="w-full bg-gray-800 border {{ 'border-red-500' if errors.protein else 'border-gray-700' }} rounded px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-indigo-500 transition-colors">
           {% if errors.protein %}<p class="mt-1 text-xs text-red-400">{{ errors.protein }}</p>{% endif %}
         </div>
 
         {# Carbs #}
         <div>
-          <label class="block text-xs text-gray-400 mb-1">Carbs (g)</label>
-          <input type="number" name="carbs" step="any" min="0"
-                 value="{{ form.get('carbs', ingredient.carbs if ingredient else '0') }}"
+          <label for="ingredient-carbs" class="block text-xs text-gray-400 mb-1">Carbs (g)</label>
+          <input type="number" name="carbs" id="ingredient-carbs" step="any" min="0"
+                 value="{{ form.get('carbs', ingredient.carbs if ingredient else '') }}"
                  class="w-full bg-gray-800 border {{ 'border-red-500' if errors.carbs else 'border-gray-700' }} rounded px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-indigo-500 transition-colors">
           {% if errors.carbs %}<p class="mt-1 text-xs text-red-400">{{ errors.carbs }}</p>{% endif %}
         </div>
 
         {# Fat #}
         <div>
-          <label class="block text-xs text-gray-400 mb-1">Fat (g)</label>
-          <input type="number" name="fat" step="any" min="0"
-                 value="{{ form.get('fat', ingredient.fat if ingredient else '0') }}"
+          <label for="ingredient-fat" class="block text-xs text-gray-400 mb-1">Fat (g)</label>
+          <input type="number" name="fat" id="ingredient-fat" step="any" min="0"
+                 value="{{ form.get('fat', ingredient.fat if ingredient else '') }}"
                  class="w-full bg-gray-800 border {{ 'border-red-500' if errors.fat else 'border-gray-700' }} rounded px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-indigo-500 transition-colors">
           {% if errors.fat %}<p class="mt-1 text-xs text-red-400">{{ errors.fat }}</p>{% endif %}
         </div>
 
         {# Fiber #}
         <div>
-          <label class="block text-xs text-gray-400 mb-1">Fiber (g) <span class="text-gray-600">optional</span></label>
-          <input type="number" name="fiber" step="any" min="0"
+          <label for="ingredient-fiber" class="block text-xs text-gray-400 mb-1">Fiber (g) <span class="text-gray-600">optional</span></label>
+          <input type="number" name="fiber" id="ingredient-fiber" step="any" min="0"
                  value="{{ form.get('fiber', ingredient.fiber if ingredient and ingredient.fiber is not none else '') }}"
                  class="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-indigo-500 transition-colors">
         </div>
 
         {# Sugar #}
         <div>
-          <label class="block text-xs text-gray-400 mb-1">Sugar (g) <span class="text-gray-600">optional</span></label>
-          <input type="number" name="sugar" step="any" min="0"
+          <label for="ingredient-sugar" class="block text-xs text-gray-400 mb-1">Sugar (g) <span class="text-gray-600">optional</span></label>
+          <input type="number" name="sugar" id="ingredient-sugar" step="any" min="0"
                  value="{{ form.get('sugar', ingredient.sugar if ingredient and ingredient.sugar is not none else '') }}"
                  class="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-indigo-500 transition-colors">
         </div>
@@ -151,26 +153,27 @@
       <p class="text-xs text-gray-500 mb-4">Inventory</p>
       <div class="grid grid-cols-2 gap-4">
         <div>
-          <label class="block text-xs text-gray-400 mb-1">
+          <label for="ingredient-quantity_on_hand" class="block text-xs text-gray-400 mb-1">
             Quantity on hand
-            <span class="text-gray-600">in serving units</span>
+            <span class="text-gray-600">in stock units</span>
           </label>
-          <input type="number" name="quantity_on_hand" step="any"
-                 value="{{ form.get('quantity_on_hand', inventory_qty if inventory_qty is not none else '0') }}"
+          <input type="number" name="quantity_on_hand" id="ingredient-quantity_on_hand" step="any" placeholder="0"
+                 value="{{ form.get('quantity_on_hand', (inventory_qty|int if inventory_qty == inventory_qty|int else inventory_qty) if inventory_qty is not none else '') }}"
                  class="w-full bg-gray-800 border {{ 'border-red-500' if errors.quantity_on_hand else 'border-gray-700' }} rounded px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-indigo-500 transition-colors">
           {% if errors.quantity_on_hand %}<p class="mt-1 text-xs text-red-400">{{ errors.quantity_on_hand }}</p>{% endif %}
         </div>
         <div>
-          <label class="block text-xs text-gray-400 mb-1">
+          <label for="ingredient-low_stock_threshold" class="block text-xs text-gray-400 mb-1">
             Low-stock alert at
-            <span class="text-gray-600">0 = no alert</span>
+            <span class="text-gray-600">at or below this amount</span>
           </label>
-          <input type="number" name="low_stock_threshold" step="any" min="0"
-                 value="{{ form.get('low_stock_threshold', ingredient.low_stock_threshold if ingredient else '0') }}"
+          <input type="number" name="low_stock_threshold" id="ingredient-low_stock_threshold" step="any" placeholder="0" min="0"
+                 value="{{ form.get('low_stock_threshold', (ingredient.low_stock_threshold|int if ingredient.low_stock_threshold == ingredient.low_stock_threshold|int else ingredient.low_stock_threshold) if ingredient else '') }}"
                  class="w-full bg-gray-800 border {{ 'border-red-500' if errors.low_stock_threshold else 'border-gray-700' }} rounded px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-indigo-500 transition-colors">
           {% if errors.low_stock_threshold %}<p class="mt-1 text-xs text-red-400">{{ errors.low_stock_threshold }}</p>{% endif %}
         </div>
       </div>
+      <p class="mt-2 text-xs text-gray-500">Leave quantities blank to start at zero. On edit, blank stock keeps the current quantity.</p>
     </div>
 
     <div class="flex gap-3 pt-1">

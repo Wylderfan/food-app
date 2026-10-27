@@ -1,7 +1,8 @@
 from flask import Blueprint, jsonify, request, render_template, redirect, url_for, flash, current_app, abort
+from sqlalchemy.exc import SQLAlchemyError
 from app import db
-from app.models import Ingredient, RecipeIngredient
-from app.utils.helpers import _float
+from app.models import Ingredient, RecipeIngredient, ShoppingListItem
+from app.utils.helpers import _float, is_finite_number
 from app.utils.inventory import get_or_create_item
 from app.utils.usda import search_foods, USDAError
 
@@ -27,14 +28,17 @@ def new_ingredient():
         if errors:
             return render_template("ingredients/form.html", errors=errors, ingredient=None,
                                    form=request.form, inventory_qty=None)
-        ing = _ingredient_from_form(request.form)
-        db.session.add(ing)
-        db.session.flush()
-        qty = _float(request.form.get("quantity_on_hand"))
-        if qty is not None and qty != 0:
-            item = get_or_create_item(ing.id)
-            item.quantity_on_hand = qty
-        db.session.commit()
+        try:
+            ing = _ingredient_from_form(request.form)
+            db.session.add(ing)
+            db.session.flush()
+            qty = _float(request.form.get("quantity_on_hand"))
+            if qty is not None and qty != 0:
+                item = get_or_create_item(ing.id)
+                item.quantity_on_hand = qty
+            db.session.commit()
+        except SQLAlchemyError:
+            return _save_error(None)
         flash(f"'{ing.name}' added.", "success")
         return redirect(url_for("ingredients.list_ingredients"))
     return render_template("ingredients/form.html", errors={}, ingredient=None,
@@ -51,12 +55,15 @@ def edit_ingredient(id):
             return render_template("ingredients/form.html", errors=errors, ingredient=ing,
                                    form=request.form,
                                    inventory_qty=item.quantity_on_hand if item else None)
-        _apply_form(ing, request.form)
-        qty = _float(request.form.get("quantity_on_hand"))
-        if qty is not None:
-            item = get_or_create_item(ing.id)
-            item.quantity_on_hand = qty
-        db.session.commit()
+        try:
+            _apply_form(ing, request.form)
+            qty = _float(request.form.get("quantity_on_hand"))
+            if qty is not None:
+                item = get_or_create_item(ing.id)
+                item.quantity_on_hand = qty
+            db.session.commit()
+        except SQLAlchemyError:
+            return _save_error(ing)
         flash(f"'{ing.name}' updated.", "success")
         return redirect(url_for("ingredients.list_ingredients"))
     return render_template("ingredients/form.html", errors={}, ingredient=ing,
@@ -76,6 +83,9 @@ def delete_ingredient(id):
         from app.models import Recipe
         parent = Recipe.query.get(used_in.recipe_id)
         flash(f"Cannot delete — '{ing.name}' is used in recipe '{parent.name}'.", "error")
+        return redirect(url_for("ingredients.list_ingredients"))
+    if ShoppingListItem.query.filter_by(ingredient_id=id).first():
+        flash("Remove this ingredient from the shopping list before deleting it.", "error")
         return redirect(url_for("ingredients.list_ingredients"))
     name = ing.name
     db.session.delete(ing)
@@ -170,12 +180,23 @@ def api_delete(id):
         from app.models import Recipe
         parent = Recipe.query.get(used_in.recipe_id)
         return jsonify({"error": f"Used in recipe '{parent.name}'"}), 409
+    if ShoppingListItem.query.filter_by(ingredient_id=id).first():
+        return jsonify({"error": "Remove this ingredient from the shopping list before deleting it."}), 409
     db.session.delete(ing)
     db.session.commit()
     return jsonify({"deleted": id})
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
+def _save_error(ingredient):
+    # Flush can fail before commit on historical schemas; rollback the whole save.
+    current_app.logger.exception("Could not save ingredient; inspect database schema and permissions")
+    db.session.rollback()
+    errors = {"save": "Could not save this ingredient. Your existing database may need a migration; check the server logs. Your changes were not saved."}
+    return render_template("ingredients/form.html", errors=errors, ingredient=ingredient,
+                           form=request.form, inventory_qty=None), 422
+
 
 def _validate_form(form):
     form = _pantry_form(form)
@@ -191,8 +212,12 @@ def _validate_form(form):
         errors["serving_unit"] = "Serving unit is required."
     for field in ["calories", "protein", "carbs", "fat", "fiber", "sugar", "low_stock_threshold"]:
         val = _float(form.get(field))
-        if val is not None and val < 0:
+        if form.get(field) not in (None, "") and val is None:
+            errors[field] = "Enter a finite number."
+        elif val is not None and val < 0:
             errors[field] = "Cannot be negative."
+    if form.get("quantity_on_hand") not in (None, "") and _float(form.get("quantity_on_hand")) is None:
+        errors["quantity_on_hand"] = "Enter a finite number."
     return errors
 
 
@@ -203,13 +228,13 @@ def _validate_data(data):
     size = data.get("servingSize")
     if size is None:
         errors["servingSize"] = "Serving size is required."
-    elif not isinstance(size, (int, float)) or size <= 0:
+    elif not is_finite_number(size) or size <= 0:
         errors["servingSize"] = "Serving size must be greater than 0."
     if not (data.get("servingUnit") or "").strip():
         errors["servingUnit"] = "Serving unit is required."
     for field in ["calories", "protein", "carbs", "fat", "fiber", "sugar", "lowStockThreshold"]:
         val = data.get(field)
-        if val is not None and (not isinstance(val, (int, float)) or val < 0):
+        if val is not None and (not is_finite_number(val) or val < 0):
             errors[field] = "Cannot be negative."
     return errors
 

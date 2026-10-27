@@ -18,22 +18,22 @@
   {# Add stock form #}
   {% if ingredients %}
   <form method="POST" action="/inventory/add" id="add-form"
-        class="hidden bg-gray-900 border border-gray-800 rounded-lg p-4 mb-6 flex flex-wrap items-end gap-3">
+        class="{{ '' if form else 'hidden' }} bg-gray-900 border border-gray-800 rounded-lg p-4 mb-6 flex flex-wrap items-end gap-3">
     <div class="flex-1 min-w-48">
-      <label class="block text-xs text-gray-400 mb-1">Ingredient</label>
-      <select name="ingredient_id" required
+      <label for="inventory-ingredient_id" class="block text-xs text-gray-400 mb-1">Ingredient</label>
+      <select name="ingredient_id" id="inventory-ingredient_id" required
               class="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-indigo-500 transition-colors">
         <option value="">— select —</option>
         {% for ing in ingredients %}
-        <option value="{{ ing.id }}" data-unit="{{ ing.serving_unit }}">
+        <option value="{{ ing.id }}" {{ 'selected' if form.get('ingredient_id') == ing.id|string else '' }} data-unit="{{ ing.serving_unit }}">
           {{ ing.name }}{% if ing.brand %} ({{ ing.brand }}){% endif %}
         </option>
         {% endfor %}
       </select>
     </div>
     <div class="w-32">
-      <label class="block text-xs text-gray-400 mb-1">Quantity</label>
-      <input type="number" name="quantity" step="any" min="0.001" required
+      <label for="inventory-quantity" class="block text-xs text-gray-400 mb-1">Quantity</label>
+      <input type="number" name="quantity" id="inventory-quantity" value="{{ form.get('quantity', '') }}" step="any" min="0.001" required
              class="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-indigo-500 transition-colors">
     </div>
     <button type="submit"
@@ -59,7 +59,7 @@
   <div class="space-y-2">
     {% for item in items %}
     {% set unit = item.ingredient.serving_unit %}
-    <div class="grid grid-cols-[1fr_8rem_8rem] gap-3 items-center px-4 py-3 rounded-lg border
+    <div class="grid grid-cols-[minmax(0,1fr)_auto_auto] sm:grid-cols-[1fr_8rem_8rem] gap-3 items-center px-4 py-3 rounded-lg border
                 {% if item.is_low_stock %}bg-yellow-900/10 border-yellow-700/40{% else %}bg-gray-900 border-gray-800{% endif %}">
 
       <div class="min-w-0">
@@ -104,7 +104,7 @@
     </p>
     {% else %}
     <p class="text-lg mb-2">Nothing tracked yet.</p>
-    <p class="text-sm">Add stock above, or log a meal — items get created automatically.</p>
+    <p class="text-sm">Add stock above, or set the quantity when editing an ingredient.</p>
     {% endif %}
   </div>
   {% endif %}

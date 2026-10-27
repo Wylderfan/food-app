@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, request, render_template, redirect, url_for, flash
 from app import db
 from app.models import Ingredient, InventoryItem
-from app.utils.helpers import _float
+from app.utils.helpers import _float, is_finite_number
 from app.utils.inventory import get_or_create_item
 
 inventory_bp = Blueprint("inventory", __name__)
@@ -10,14 +10,14 @@ inventory_bp = Blueprint("inventory", __name__)
 # ── UI ────────────────────────────────────────────────────────────────────────
 
 @inventory_bp.route("/inventory")
-def list_inventory():
+def list_inventory(form=None):
     items = (
         InventoryItem.query
         .join(Ingredient, InventoryItem.ingredient_id == Ingredient.id)
         .order_by(Ingredient.name).all()
     )
     ingredients = Ingredient.query.order_by(Ingredient.name).all()
-    return render_template("inventory/list.html", items=items, ingredients=ingredients)
+    return render_template("inventory/list.html", items=items, ingredients=ingredients, form=form or {})
 
 
 @inventory_bp.route("/inventory/add", methods=["POST"])
@@ -27,12 +27,12 @@ def add_stock():
 
     if not ingredient_id or qty is None or qty <= 0:
         flash("Ingredient and a positive quantity are required.", "error")
-        return redirect(url_for("inventory.list_inventory"))
+        return list_inventory(request.form)
 
     ing = Ingredient.query.get(ingredient_id)
     if not ing:
         flash("Ingredient not found.", "error")
-        return redirect(url_for("inventory.list_inventory"))
+        return list_inventory(request.form)
 
     item = get_or_create_item(ingredient_id)
     item.quantity_on_hand += qty
@@ -62,9 +62,9 @@ def api_set(ingredient_id):
     qty = data.get("quantityOnHand")
     threshold = data.get("lowStockThreshold")
 
-    if qty is not None and not isinstance(qty, (int, float)):
+    if qty is not None and not is_finite_number(qty):
         errors["quantityOnHand"] = "Must be a number."
-    if threshold is not None and (not isinstance(threshold, (int, float)) or threshold < 0):
+    if threshold is not None and (not is_finite_number(threshold) or threshold < 0):
         errors["lowStockThreshold"] = "Must be a non-negative number."
     if qty is None and threshold is None:
         errors["_"] = "Provide quantityOnHand and/or lowStockThreshold."
@@ -89,9 +89,9 @@ def api_add():
     ingredient_id = data.get("ingredientId")
     qty = data.get("quantity")
 
-    if not isinstance(ingredient_id, int):
+    if type(ingredient_id) is not int:
         errors["ingredientId"] = "Required."
-    if qty is None or not isinstance(qty, (int, float)) or qty <= 0:
+    if qty is None or not is_finite_number(qty) or qty <= 0:
         errors["quantity"] = "Must be a positive number."
 
     if errors:
