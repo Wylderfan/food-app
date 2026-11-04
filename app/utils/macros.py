@@ -1,3 +1,5 @@
+from app.utils.units import convert_quantity, positive_number
+
 def calculate_recipe_macros(recipe, _visited=None):
     """
     Returns (total_macros, per_serving_macros) as dicts with keys:
@@ -16,7 +18,7 @@ def calculate_recipe_macros(recipe, _visited=None):
     for ri in recipe.recipe_ingredients:
         if ri.ingredient_id and ri.ingredient:
             ing = ri.ingredient
-            scale = ri.quantity / ing.serving_size
+            scale = convert_quantity(ri.quantity, ri.unit, ing.serving_unit) / positive_number(ing.serving_size, "Ingredient serving size")
             totals["calories"] += ing.calories * scale
             totals["protein"] += ing.protein * scale
             totals["carbs"] += ing.carbs * scale

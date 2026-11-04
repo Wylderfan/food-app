@@ -6,6 +6,7 @@ from app import db
 from app.models import Ingredient, Recipe, RecipeIngredient, DailyLogEntry
 from app.utils.helpers import _float
 from app.utils.macros import calculate_recipe_macros
+from app.utils.units import convert_quantity, normalize_unit, unit_definitions
 
 recipes_bp = Blueprint("recipes", __name__)
 
@@ -225,7 +226,7 @@ def _form_context(exclude_id):
             except ValueError:
                 total = dict(calories=0, protein=0, carbs=0, fat=0, fiber=0, sugar=0)
             recipes_json[str(r.id)]["totalMacros"] = total
-    return {"ingredients_json": ingredients_json, "recipes_json": recipes_json}
+    return {"ingredients_json": ingredients_json, "recipes_json": recipes_json, "unit_definitions": unit_definitions()}
 
 
 def _recipe_items_for_form(recipe):
@@ -301,8 +302,14 @@ def _validate_items(items, recipe_id=None):
         if item["type"] == "subrecipe" and _would_cycle(ident, recipe_id):
             messages.append(prefix + "a recipe cannot contain itself, directly or through another recipe.")
         expected_unit = obj.serving_unit if item["type"] == "ingredient" else "serving"
-        if item.get("unit") not in ("", None, expected_unit):
-            messages.append(prefix + f"use the stock unit ({expected_unit}); unit conversion is not supported.")
+        entered_unit = item.get("unit") or expected_unit
+        if item["type"] == "ingredient":
+            try:
+                convert_quantity(item["quantity"] if _positive_number(item.get("quantity")) else 1, entered_unit, expected_unit)
+            except ValueError as exc:
+                messages.append(prefix + str(exc))
+        elif not isinstance(entered_unit, str) or entered_unit.strip().lower() not in ("serving", "servings"):
+            messages.append(prefix + "sub-recipes must use servings.")
     return {"items": " ".join(messages)} if messages else {}
 
 
@@ -320,7 +327,7 @@ def _replace_recipe_items(recipe_id, items):
     RecipeIngredient.query.filter_by(recipe_id=recipe_id).delete()
     for item in items:
         ident = int(item["refId"])
-        unit = (db.session.get(Ingredient, ident).serving_unit
+        unit = (normalize_unit(item.get("unit") or db.session.get(Ingredient, ident).serving_unit)
                 if item["type"] == "ingredient" else "serving")
         ri = RecipeIngredient(
             recipe_id=recipe_id,
