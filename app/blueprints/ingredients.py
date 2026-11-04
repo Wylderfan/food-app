@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, request, render_template, redirect, url_for, flash, current_app, abort
 from sqlalchemy.exc import SQLAlchemyError
 from app import db
-from app.models import PantryCertainty, Ingredient, RecipeIngredient, ShoppingListItem
+from app.models import PantryCertainty, Ingredient, InventoryItem, RecipeIngredient, ShoppingListItem
 from app.utils.helpers import _float, is_finite_number
 from app.utils.inventory import get_or_create_item
 from app.utils.usda import search_foods, USDAError
@@ -54,6 +54,9 @@ def edit_ingredient(id):
     item = ing.inventory_items[0] if ing.inventory_items else None
     if request.method == "POST":
         errors = _validate_form(request.form)
+        unit_error = _stock_unit_change_error(ing, request.form.get("serving_unit"))
+        if unit_error:
+            errors["serving_unit"] = unit_error
         if errors:
             return render_template("ingredients/form.html", errors=errors, ingredient=ing,
                                    form=request.form,
@@ -160,6 +163,9 @@ def api_update(id):
     ing = Ingredient.query.get_or_404(id)
     data = _pantry_data(request.get_json() or {}, ing)
     errors = _validate_data(data)
+    unit_error = _stock_unit_change_error(ing, data.get("servingUnit") if isinstance(data, dict) else None)
+    if unit_error:
+        errors["servingUnit"] = unit_error
     if errors:
         return jsonify({"errors": errors}), 422
     ing.name = data["name"].strip()
@@ -297,3 +303,20 @@ def _pantry_form(form, ingredient=None):
         for key in _NUTRIENTS:
             data[key] = getattr(ingredient, key) if ingredient else (None if key in ("fiber", "sugar") else 0)
     return data
+
+
+def _stock_unit_change_error(ingredient, proposed):
+    """Do not reinterpret historical quantities by relabeling their stock unit."""
+    if not isinstance(proposed, str) or proposed.strip() == ingredient.serving_unit:
+        return None  # Existing field validation handles missing/invalid values.
+    referenced = (
+        InventoryItem.query.filter_by(ingredient_id=ingredient.id).first()
+        or PantryCertainty.query.filter_by(ingredient_id=ingredient.id).first()
+        or RecipeIngredient.query.filter_by(ingredient_id=ingredient.id).first()
+        or ShoppingListItem.query.filter_by(ingredient_id=ingredient.id).first()
+    )
+    if referenced:
+        return ("Stock unit cannot be changed while this ingredient has pantry, recipe or shopping records. "
+                "Keep its current unit; recipe lines can use compatible units such as kg and g. "
+                "Changing the stock unit requires an explicit data conversion.")
+    return None
