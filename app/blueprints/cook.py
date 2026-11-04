@@ -74,7 +74,10 @@ def preference(recipe_id):
     pref.archived = request.form.get('archived') == '1'
     db.session.commit()
     flash('Recipe preference saved for your current profile.', 'success')
-    return redirect(url_for('cook.index'))
+    servings = _float(request.form.get('servings', '1'))
+    if servings is None or servings <= 0:
+        servings = 1
+    return redirect(url_for('cook.index', servings=servings, status=request.form.get('status', ''), archived=request.form.get('show_archived', '')))
 
 
 @cook_bp.route('/inventory/correct', methods=['POST'])

@@ -44,6 +44,11 @@ class CookabilityTests(unittest.TestCase):
         self.assertEqual(availability(self.recipe,2)['status'],'Check recipe')
         self.recipe.recipe_ingredients=[];db.session.commit()
         self.assertEqual(availability(self.recipe,2)['status'],'Check recipe')
+    def test_preference_preserves_servings_and_filter(self):
+        response = self.client.post(f'/cook/{self.recipe.id}/preference', data={'rating':'4','servings':'2','status':'Ready to cook','show_archived':'0'})
+        self.assertIn('servings=2.0', response.location)
+        self.assertIn('status=Ready+to+cook', response.location)
+
     def test_recipe_ranking(self):
         from app.utils.helpers import current_profile
         other=Recipe(name='A unrated bowl',total_servings=1);db.session.add(other);db.session.flush()

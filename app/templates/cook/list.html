@@ -17,6 +17,7 @@
 <ul class="space-y-1">{% for line in row.lines %}<li>{{ line.name }}: need {{ '%g'|format(line.needed) }} {{ line.unit }}.
 {% if line.unknown %}<strong class="text-yellow-300">Have some; check amount.</strong>{% else %}Have {{ '%g'|format(line.available) }} {{ line.unit }}.{% if line.short > 0.000000001 %} <strong class="text-yellow-300">Short {{ '%g'|format(line.short) }} {{ line.unit }}.</strong>{% endif %}{% endif %}</li>{% endfor %}</ul>
 <form method="POST" action="/cook/{{ row.recipe.id }}/preference" class="flex flex-wrap gap-3 items-center">
+<input type="hidden" name="servings" value="{{ servings }}"><input type="hidden" name="status" value="{{ status }}"><input type="hidden" name="show_archived" value="{{ 1 if archived else 0 }}">
 <label>Rating <select name="rating" class="bg-gray-800 rounded p-2"><option value="">Unrated</option>{% for rating in range(1,6) %}<option value="{{ rating }}" {% if row.preference and row.preference.rating == rating %}selected{% endif %}>{{ rating }}/5</option>{% endfor %}</select></label>
 <label><input type="checkbox" name="archived" value="1" {% if archived %}checked{% endif %}> Archive</label><button class="border border-gray-600 rounded px-3 py-2">Save preference</button>
 </form></article>
