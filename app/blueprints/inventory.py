@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, request, render_template, redirect, url_for, flash
 from app import db
-from app.models import Ingredient, InventoryItem
+from app.models import Ingredient, InventoryItem, PantryCertainty
 from app.utils.helpers import _float, is_finite_number
 from app.utils.inventory import get_or_create_item
 
@@ -75,6 +75,9 @@ def api_set(ingredient_id):
     item = get_or_create_item(ingredient_id)
     if qty is not None:
         item.quantity_on_hand = qty
+        certainty = db.session.get(PantryCertainty, ingredient_id)
+        if certainty:
+            certainty.amount_unknown = False
     if threshold is not None:
         ing.low_stock_threshold = threshold
     db.session.commit()

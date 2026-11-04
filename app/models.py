@@ -21,6 +21,8 @@ class Ingredient(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+    pantry_certainty = db.relationship("PantryCertainty", cascade="all, delete-orphan", uselist=False)
+
     inventory_items = db.relationship(
         "InventoryItem",
         backref="ingredient",
@@ -62,6 +64,8 @@ class Recipe(db.Model):
     instructions = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    preferences = db.relationship("RecipePreference", cascade="all, delete-orphan")
 
     recipe_ingredients = db.relationship(
         "RecipeIngredient",
@@ -158,12 +162,17 @@ class InventoryItem(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     @property
+    def amount_unknown(self):
+        certainty = db.session.get(PantryCertainty, self.ingredient_id)
+        return bool(certainty and certainty.amount_unknown)
+
+    @property
     def low_stock_threshold(self):
         return self.ingredient.low_stock_threshold if self.ingredient else 0
 
     @property
     def is_low_stock(self):
-        return self.quantity_on_hand <= self.low_stock_threshold
+        return not self.amount_unknown and self.quantity_on_hand <= self.low_stock_threshold
 
     def to_dict(self):
         return {
@@ -171,7 +180,8 @@ class InventoryItem(db.Model):
             "ingredientId": self.ingredient_id,
             "ingredientName": self.ingredient.name if self.ingredient else None,
             "unit": self.ingredient.serving_unit if self.ingredient else None,
-            "quantityOnHand": self.quantity_on_hand,
+            "quantityOnHand": None if self.amount_unknown else self.quantity_on_hand,
+            "amountUnknown": self.amount_unknown,
             "lowStockThreshold": self.low_stock_threshold,
             "lowStock": self.is_low_stock,
             "updatedAt": self.updated_at.isoformat(),
@@ -202,3 +212,18 @@ class ShoppingListItem(db.Model):
             "addedFrom": self.added_from,
             "createdAt": self.created_at.isoformat(),
         }
+
+
+class PantryCertainty(db.Model):
+    """Additive metadata: existing inventory tables and amounts remain untouched."""
+    __tablename__ = "pantry_certainty"
+    ingredient_id = db.Column(db.Integer, db.ForeignKey("ingredients.id"), primary_key=True)
+    amount_unknown = db.Column(db.Boolean, nullable=False, default=False)
+
+
+class RecipePreference(db.Model):
+    __tablename__ = "recipe_preferences"
+    recipe_id = db.Column(db.Integer, db.ForeignKey("recipes.id"), primary_key=True)
+    profile_id = db.Column(db.String(100), primary_key=True)
+    rating = db.Column(db.Integer)
+    archived = db.Column(db.Boolean, nullable=False, default=False)

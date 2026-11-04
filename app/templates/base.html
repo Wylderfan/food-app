@@ -17,6 +17,7 @@
     <div class="flex flex-wrap items-center gap-4">
       <a href="/" class="text-sm text-gray-300 hover:text-white">Pantry</a>
       <a href="/ingredients" class="text-sm text-gray-300 hover:text-white">Ingredients</a>
+      <a href="/cook" class="text-sm text-gray-300 hover:text-white">Cook</a>
       <a href="/recipes" class="text-sm text-gray-300 hover:text-white">Recipes</a>
       <a href="/inventory" class="text-sm text-gray-300 hover:text-white">Inventory</a>
       <a href="/shopping-list" class="text-sm text-gray-300 hover:text-white">Shopping</a>
@@ -27,7 +28,7 @@
       {% block nav_links %}{% endblock %}
 
       {# Profile switcher — only shown when multiple profiles are configured #}
-      {% if config.ENABLE_NUTRITION and profiles | length > 1 %}
+      {% if profiles | length > 1 %}
       <div class="relative" x-data="{ open: false }">
         <button onclick="this.nextElementSibling.classList.toggle('hidden')"
                 class="text-sm text-gray-300 hover:text-white flex items-center gap-1">

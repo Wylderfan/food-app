@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, request, render_template, redirect, url_for, flash, current_app, abort
 from sqlalchemy.exc import SQLAlchemyError
 from app import db
-from app.models import Ingredient, RecipeIngredient, ShoppingListItem
+from app.models import PantryCertainty, Ingredient, RecipeIngredient, ShoppingListItem
 from app.utils.helpers import _float, is_finite_number
 from app.utils.inventory import get_or_create_item
 from app.utils.usda import search_foods, USDAError
@@ -36,6 +36,9 @@ def new_ingredient():
             if qty is not None and qty != 0:
                 item = get_or_create_item(ing.id)
                 item.quantity_on_hand = qty
+                certainty = db.session.get(PantryCertainty, item.ingredient_id)
+                if certainty:
+                    certainty.amount_unknown = False
             db.session.commit()
         except SQLAlchemyError:
             return _save_error(None)
@@ -54,13 +57,16 @@ def edit_ingredient(id):
         if errors:
             return render_template("ingredients/form.html", errors=errors, ingredient=ing,
                                    form=request.form,
-                                   inventory_qty=item.quantity_on_hand if item else None)
+                                   inventory_qty=item.quantity_on_hand if item and not item.amount_unknown else None)
         try:
             _apply_form(ing, request.form)
             qty = _float(request.form.get("quantity_on_hand"))
             if qty is not None:
                 item = get_or_create_item(ing.id)
                 item.quantity_on_hand = qty
+                certainty = db.session.get(PantryCertainty, item.ingredient_id)
+                if certainty:
+                    certainty.amount_unknown = False
             db.session.commit()
         except SQLAlchemyError:
             return _save_error(ing)
@@ -68,7 +74,7 @@ def edit_ingredient(id):
         return redirect(url_for("ingredients.list_ingredients"))
     return render_template("ingredients/form.html", errors={}, ingredient=ing,
                            form={},
-                           inventory_qty=item.quantity_on_hand if item else None)
+                           inventory_qty=item.quantity_on_hand if item and not item.amount_unknown else None)
 
 
 # NOTE: PROJECT.md 1.3 — delete confirmation should preview which recipes

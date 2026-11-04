@@ -17,8 +17,14 @@ product. Existing nutrition data is retained. No database tables are dropped.
 - Mark purchases to add stock; unmarking reverses that addition.
 - Use the pantry-first home page without calorie targets or a nutrition API.
 
-**Not yet implemented:** favorite ratings and ranked cookable recipes; a dedicated
-“Cook this recipe” event with snapshot-based undo; unit conversion; purchase prices
+- Mark stock as exact, unknown (have some), or out of stock.
+- Rank recipes by serving-scaled availability and personal rating; archive per profile.
+- Convert compatible g/kg, ml/l and count units without guessing densities.
+
+See [cookability workflow and data compatibility](docs/COOKABILITY.md).
+
+**Not yet implemented:** a dedicated
+“Cook this recipe” event with snapshot-based undo; purchase prices
 and spending history. Stock is manually adjusted in the default workflow. See
 [the staged roadmap](PROJECT.md) rather than assuming these features exist.
 
