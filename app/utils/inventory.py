@@ -3,30 +3,44 @@ from app.models import InventoryItem
 
 
 def flatten_recipe(recipe, servings, _visited=None):
-    """
-    Returns {ingredient_id: total_quantity} for `servings` portions of `recipe`,
-    resolving sub-recipes recursively. Quantities are in each ingredient's
-    serving unit (recipe ingredient `quantity` is assumed to use that unit;
-    see PROJECT.md unit note).
+    """Resolve a recipe into quantities in each ingredient's stock unit.
 
-    Raises ValueError on circular sub-recipe references.
+    Reject missing references, unsupported units, non-positive/non-finite
+    quantities and cycles rather than reporting an incomplete recipe as ready.
+    Repeated references in different branches are intentionally combined.
     """
-    if _visited is None:
-        _visited = frozenset()
-    if recipe.id in _visited:
+    from app.utils.units import convert_quantity, positive_number
+
+    if recipe is None:
+        raise ValueError("Recipe not found.")
+    servings = positive_number(servings, 'Servings')
+    total = positive_number(recipe.total_servings, 'Recipe servings')
+    key = recipe.id if recipe.id is not None else id(recipe)
+    visited = frozenset() if _visited is None else _visited
+    if key in visited:
         raise ValueError(f"Circular reference detected involving recipe '{recipe.name}'")
-    _visited = _visited | {recipe.id}
-
-    scale = servings / (recipe.total_servings or 1)
+    visited = visited | {key}
+    scale = positive_number(servings / total, 'Serving scale')
     result = {}
+    if not recipe.recipe_ingredients:
+        raise ValueError("Recipe has no ingredients.")
 
     for ri in recipe.recipe_ingredients:
-        if ri.ingredient_id:
-            result[ri.ingredient_id] = result.get(ri.ingredient_id, 0.0) + ri.quantity * scale
-        elif ri.sub_recipe_id and ri.sub_recipe:
-            sub_servings = ri.quantity * scale
-            for ing_id, qty in flatten_recipe(ri.sub_recipe, sub_servings, _visited).items():
-                result[ing_id] = result.get(ing_id, 0.0) + qty
+        quantity = positive_number(ri.quantity, 'Recipe ingredient quantity')
+        scaled = positive_number(quantity * scale, 'Scaled quantity')
+        if ri.ingredient_id and not ri.sub_recipe_id:
+            if ri.ingredient is None:
+                raise ValueError("Recipe ingredient no longer exists.")
+            amount = convert_quantity(scaled, ri.unit, ri.ingredient.serving_unit)
+            result[ri.ingredient_id] = positive_number(
+                result.get(ri.ingredient_id, 0.0) + amount, 'Total quantity')
+        elif ri.sub_recipe_id and not ri.ingredient_id and ri.sub_recipe is not None:
+            if not isinstance(ri.unit, str) or ri.unit.strip().lower() not in ('serving', 'servings'):
+                raise ValueError("Sub-recipe quantity must use servings.")
+            for ing_id, qty in flatten_recipe(ri.sub_recipe, scaled, visited).items():
+                result[ing_id] = positive_number(result.get(ing_id, 0.0) + qty, 'Total quantity')
+        else:
+            raise ValueError("Recipe line must reference exactly one existing ingredient or sub-recipe.")
 
     return result
 

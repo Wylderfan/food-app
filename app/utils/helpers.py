@@ -1,3 +1,4 @@
+import math
 from flask import session, current_app
 
 
@@ -9,12 +10,19 @@ def current_profile():
 def _int(value):
     try:
         return int(value)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return None
 
 
 def _float(value):
     try:
-        return float(value)
-    except (TypeError, ValueError):
+        if isinstance(value, bool):
+            return None
+        number = float(value)
+        return number if math.isfinite(number) else None
+    except (TypeError, ValueError, OverflowError):
         return None
+
+
+def is_finite_number(value):
+    return type(value) in (int, float) and _float(value) is not None

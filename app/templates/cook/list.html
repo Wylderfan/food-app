@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% block title %}Cook — {{ config.APP_NAME }}{% endblock %}
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-5">
+<h1 class="text-2xl font-semibold">What can I cook?</h1>
+<p class="text-gray-400">Availability uses your recorded pantry. Ratings and archives belong to your current profile. Cooking deductions are not enabled yet.</p>
+<form method="GET" class="flex flex-wrap gap-3 items-end">
+<label>Servings <input name="servings" type="number" min="0.01" step="any" required value="{{ servings }}" class="block bg-gray-800 rounded p-2 w-28"></label>
+<label>Availability <select name="status" class="block bg-gray-800 rounded p-2"><option value="">All</option>{% for label in ['Ready to cook', 'Check quantity', 'Missing ingredients', 'Check recipe'] %}<option {% if status == label %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+<label><input type="checkbox" name="archived" value="1" {% if archived %}checked{% endif %}> Archived</label>
+<button class="bg-indigo-600 rounded px-4 py-2">Find recipes</button>
+</form>
+{% for row in rows %}
+<article class="border border-gray-700 rounded p-4 space-y-3">
+<div><a class="text-xl text-indigo-300" href="/recipes/{{ row.recipe.id }}">{{ row.recipe.name }}</a><p class="font-semibold">{{ row.status }}</p></div>
+{% if row.error %}<p class="text-yellow-300">{{ row.error }}</p>{% endif %}
+<ul class="space-y-1">{% for line in row.lines %}<li>{{ line.name }}: need {{ '%g'|format(line.needed) }} {{ line.unit }}.
+{% if line.unknown %}<strong class="text-yellow-300">Have some; check amount.</strong>{% else %}Have {{ '%g'|format(line.available) }} {{ line.unit }}.{% if line.short > 0.000000001 %} <strong class="text-yellow-300">Short {{ '%g'|format(line.short) }} {{ line.unit }}.</strong>{% endif %}{% endif %}</li>{% endfor %}</ul>
+<form method="POST" action="/cook/{{ row.recipe.id }}/preference" class="flex flex-wrap gap-3 items-center">
+<input type="hidden" name="servings" value="{{ servings }}"><input type="hidden" name="status" value="{{ status }}"><input type="hidden" name="show_archived" value="{{ 1 if archived else 0 }}">
+<label>Rating <select name="rating" class="bg-gray-800 rounded p-2"><option value="">Unrated</option>{% for rating in range(1,6) %}<option value="{{ rating }}" {% if row.preference and row.preference.rating == rating %}selected{% endif %}>{{ rating }}/5</option>{% endfor %}</select></label>
+<label><input type="checkbox" name="archived" value="1" {% if archived %}checked{% endif %}> Archive</label><button class="border border-gray-600 rounded px-3 py-2">Save preference</button>
+</form></article>
+{% else %}<p>No recipes match. <a class="text-indigo-300" href="/recipes/new">Add a recipe</a> or change your filters.</p>{% endfor %}
+</div>
+{% endblock %}

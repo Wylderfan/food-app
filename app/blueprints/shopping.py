@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, request, render_template, redirect, url_for, flash
 from app import db
 from app.models import Ingredient, Recipe, ShoppingListItem
-from app.utils.helpers import _float
+from app.utils.helpers import _float, is_finite_number
 from app.utils.shopping import add_ingredient, add_recipe, toggle_purchased
 
 shopping_bp = Blueprint("shopping", __name__)
@@ -22,12 +22,13 @@ def _ordered_items():
 # ── UI ────────────────────────────────────────────────────────────────────────
 
 @shopping_bp.route("/shopping-list")
-def list_shopping():
+def list_shopping(form=None, active_form=None):
     items = _ordered_items()
     ingredients = Ingredient.query.order_by(Ingredient.name).all()
     recipes = Recipe.query.order_by(Recipe.name).all()
     return render_template("shopping/list.html",
-                           items=items, ingredients=ingredients, recipes=recipes)
+                           items=items, ingredients=ingredients, recipes=recipes,
+                           form=form or {}, active_form=active_form)
 
 
 @shopping_bp.route("/shopping-list/add-ingredient", methods=["POST"])
@@ -36,11 +37,11 @@ def ui_add_ingredient():
     qty = _float(request.form.get("quantity"))
     if not ing_id or qty is None or qty <= 0:
         flash("Ingredient and a positive quantity are required.", "error")
-        return redirect(url_for("shopping.list_shopping"))
+        return list_shopping(request.form, "ingredient")
     item = add_ingredient(ing_id, qty)
     if not item:
         flash("Ingredient not found.", "error")
-        return redirect(url_for("shopping.list_shopping"))
+        return list_shopping(request.form, "ingredient")
     db.session.commit()
     flash(f"Added {qty:g} {item.unit} of {item.ingredient.name}.", "success")
     return redirect(url_for("shopping.list_shopping"))
@@ -52,15 +53,15 @@ def ui_add_recipe():
     servings = _float(request.form.get("servings"))
     if not recipe_id or servings is None or servings <= 0:
         flash("Recipe and a positive servings count are required.", "error")
-        return redirect(url_for("shopping.list_shopping"))
+        return list_shopping(request.form, "recipe")
     recipe = Recipe.query.get(recipe_id)
     if not recipe:
         flash("Recipe not found.", "error")
-        return redirect(url_for("shopping.list_shopping"))
+        return list_shopping(request.form, "recipe")
     result = add_recipe(recipe, servings)
     if result is None:
         flash(f"'{recipe.name}' has a circular sub-recipe reference.", "error")
-        return redirect(url_for("shopping.list_shopping"))
+        return list_shopping(request.form, "recipe")
     touched, skipped = result
     db.session.commit()
     if not touched:
@@ -107,9 +108,9 @@ def api_add_ingredient():
     errors = {}
     ing_id = data.get("ingredientId")
     qty = data.get("quantity")
-    if not isinstance(ing_id, int):
+    if type(ing_id) is not int:
         errors["ingredientId"] = "Required."
-    if qty is None or not isinstance(qty, (int, float)) or qty <= 0:
+    if qty is None or not is_finite_number(qty) or qty <= 0:
         errors["quantity"] = "Must be a positive number."
     if errors:
         return jsonify({"errors": errors}), 422
@@ -127,9 +128,9 @@ def api_add_recipe():
     errors = {}
     recipe_id = data.get("recipeId")
     servings = data.get("servings")
-    if not isinstance(recipe_id, int):
+    if type(recipe_id) is not int:
         errors["recipeId"] = "Required."
-    if servings is None or not isinstance(servings, (int, float)) or servings <= 0:
+    if servings is None or not is_finite_number(servings) or servings <= 0:
         errors["servings"] = "Must be a positive number."
     if errors:
         return jsonify({"errors": errors}), 422

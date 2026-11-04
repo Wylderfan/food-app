@@ -52,6 +52,9 @@ def add_recipe(recipe, servings):
     skipped = []
     for ing_id, qty_needed in flat.items():
         inv = InventoryItem.query.filter_by(ingredient_id=ing_id).first()
+        if inv and inv.amount_unknown:
+            skipped.append((Ingredient.query.get(ing_id), "unknown amount; check pantry"))
+            continue
         on_hand = inv.quantity_on_hand if inv else 0
         gap = qty_needed - on_hand
         if gap <= 0:
