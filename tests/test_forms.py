@@ -75,12 +75,12 @@ class FormTests(unittest.TestCase):
         self.client.delete(f'/api/shopping-list/{shopping_id}')
         self.assertEqual(self.client.delete(f'/api/ingredients/{ident}').status_code, 200)
 
-    def test_purchase_unpurchase_and_repeat_roundtrip(self):
+    def test_legacy_toggle_now_opens_explicit_purchase_without_stock_change(self):
         ident = self.ingredient()
         self.client.post('/inventory/add', data={'ingredient_id': ident, 'quantity': 5})
         self.client.post('/shopping-list/add-ingredient', data={'ingredient_id': ident, 'quantity': 3})
         item = ShoppingListItem.query.one()
-        for expected in (8, 5, 8, 5):
+        for expected in (5, 5, 5, 5):
             response = self.client.post(f'/shopping-list/{item.id}/toggle', follow_redirects=True)
             self.assertEqual(response.status_code, 200)
             self.assertEqual(InventoryItem.query.one().quantity_on_hand, expected)

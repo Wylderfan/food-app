@@ -112,8 +112,8 @@ class PantryTests(unittest.TestCase):
         item = items[0]
         self.assertEqual(item['quantityNeeded'], 150)
         path = f"/api/shopping-list/{item['id']}/toggle-purchased"
-        self.assertEqual(self.client.put(path).status_code, 200)
-        self.assertEqual(self.client.get('/api/inventory').json[0]['quantityOnHand'], 200)
+        self.assertEqual(self.client.put(path).status_code, 409)
+        self.assertEqual(self.client.get('/api/inventory').json[0]['quantityOnHand'], 50)
         self.client.put(path)
         self.assertEqual(self.client.get('/api/inventory').json[0]['quantityOnHand'], 50)
 
