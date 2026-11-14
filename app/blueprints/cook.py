@@ -1,7 +1,7 @@
 """Pantry availability is advisory; it never silently changes stock."""
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from app import db
-from app.models import Ingredient, InventoryItem, PantryCertainty, Recipe, RecipePreference
+from app.models import Ingredient, InventoryItem, PantryCertainty, Recipe, RecipePreference, CookEvent, CookUndo
 from app.utils.helpers import _float, current_profile, is_finite_number
 from app.utils.inventory import flatten_recipe, get_or_create_item
 
@@ -56,7 +56,9 @@ def index():
         rows.append({'recipe': recipe, 'preference': preference, **result})
     order = {'Ready to cook': 0, 'Check quantity': 1, 'Missing ingredients': 2, 'Check recipe': 3}
     rows.sort(key=lambda row: (order[row['status']], -(row['preference'].rating or 0) if row['preference'] else 0, row['recipe'].name.lower(), row['recipe'].id))
-    return render_template('cook/list.html', rows=rows, servings=servings, status=status, archived=archived)
+    recent = CookEvent.query.filter_by(profile_id=current_profile()).order_by(CookEvent.created_at.desc()).limit(20).all()
+    undone = {u.token for u in CookUndo.query.all()}
+    return render_template('cook/list.html', rows=rows, servings=servings, status=status, archived=archived, recent=recent, undone=undone)
 
 
 @cook_bp.route('/cook/<int:recipe_id>/preference', methods=['POST'])
@@ -97,6 +99,8 @@ def correct_stock(ingredient_id):
     if mode not in ('known', 'some', 'out') or (mode == 'known' and (qty is None or qty < 0)):
         flash('Enter a finite non-negative amount, or choose Have some / Out of stock.', 'error')
         return redirect(url_for('inventory.list_inventory'))
+    from app.utils.transactions import touch
+    touch(ingredient_id)
     item = get_or_create_item(ingredient_id)
     certainty = db.session.get(PantryCertainty, ingredient_id)
     if certainty is None:
@@ -108,3 +112,42 @@ def correct_stock(ingredient_id):
     db.session.commit()
     flash('Pantry status corrected.', 'success')
     return redirect(url_for('inventory.list_inventory'))
+
+
+@cook_bp.route('/cook/<int:recipe_id>/preview', methods=['POST'])
+def preview_cook(recipe_id):
+    from app.utils.cooking import preview
+    try:
+        plan = preview(db.get_or_404(Recipe, recipe_id), request.form.get('servings'), current_profile())
+        db.session.commit()
+        return render_template('cook/preview.html', plan=plan)
+    except ValueError as exc:
+        db.session.rollback()
+        flash(str(exc), 'error')
+        return redirect(url_for('cook.index'))
+
+
+@cook_bp.route('/cook/confirm', methods=['POST'])
+def confirm_cook():
+    from app.utils.cooking import confirm
+    try:
+        confirm(request.form.get('token', ''), current_profile())
+        db.session.commit()
+        flash('Cooking recorded. Stock deducted once.', 'success')
+    except ValueError as exc:
+        db.session.rollback()
+        flash(str(exc), 'error')
+    return redirect(url_for('cook.index'))
+
+
+@cook_bp.route('/cook/<token>/undo', methods=['POST'])
+def undo_cook(token):
+    from app.utils.cooking import undo
+    try:
+        undo(token, current_profile())
+        db.session.commit()
+        flash('Cooking undone using the original quantities.', 'success')
+    except ValueError as exc:
+        db.session.rollback()
+        flash(str(exc), 'error')
+    return redirect(url_for('cook.index'))

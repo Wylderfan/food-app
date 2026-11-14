@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% block title %}Confirm cooking — {{ config.APP_NAME }}{% endblock %}
+{% block content %}
+<section class="max-w-xl mx-auto space-y-5">
+<h1 class="text-2xl">Cook {{ plan.recipe_name }}?</h1>
+<p>{{ '%g'|format(plan.servings) }} servings. These quantities will be deducted only when you confirm.</p>
+<ul class="space-y-3">{% for line in plan.snapshot %}<li><strong>{{ line.name }}</strong>: deduct {{ '%g'|format(line.quantity) }} {{ line.unit }}<br>{{ '%g'|format(line.before) }} → {{ '%g'|format(line.after) }} {{ line.unit }}</li>{% endfor %}</ul>
+<p>This records cooking, not eating, leftovers, spending or nutrition. A changed pantry or deduction requires a fresh preview.</p>
+<form method="POST" action="/cook/confirm"><input type="hidden" name="token" value="{{ plan.token }}"><button class="bg-indigo-600 rounded px-4 py-3">Confirm cook and deduct stock</button></form>
+<a href="/cook?servings={{ plan.servings }}" class="block py-3 text-indigo-300">Cancel — keep stock unchanged</a>
+</section>
+{% endblock %}
