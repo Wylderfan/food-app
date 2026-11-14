@@ -68,16 +68,4 @@ def add_recipe(recipe, servings):
 
 
 def toggle_purchased(item):
-    """
-    Flip purchased flag. When marking purchased, add quantity to inventory.
-    When un-marking, deduct it back. Mirrors tracking.delete_log restore.
-    """
-    if not item.purchased:
-        item.purchased = True
-        inv = get_or_create_item(item.ingredient_id)
-        inv.quantity_on_hand += item.quantity_needed
-    else:
-        item.purchased = False
-        inv = get_or_create_item(item.ingredient_id)
-        inv.quantity_on_hand -= item.quantity_needed
-    return item
+    raise ValueError('Record an explicit purchase. Legacy checkbox stock toggles are retired.')

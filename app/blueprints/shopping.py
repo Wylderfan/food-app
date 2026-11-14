@@ -2,7 +2,7 @@ from flask import Blueprint, jsonify, request, render_template, redirect, url_fo
 from app import db
 from app.models import Ingredient, Recipe, ShoppingListItem
 from app.utils.helpers import _float, is_finite_number
-from app.utils.shopping import add_ingredient, add_recipe, toggle_purchased
+from app.utils.shopping import add_ingredient, add_recipe
 
 shopping_bp = Blueprint("shopping", __name__)
 
@@ -74,9 +74,7 @@ def ui_add_recipe():
 @shopping_bp.route("/shopping-list/<int:id>/toggle", methods=["POST"])
 def ui_toggle(id):
     item = ShoppingListItem.query.get_or_404(id)
-    toggle_purchased(item)
-    db.session.commit()
-    return redirect(url_for("shopping.list_shopping"))
+    return redirect(url_for("purchases.new", shopping_id=item.id))
 
 
 @shopping_bp.route("/shopping-list/<int:id>/delete", methods=["POST"])
@@ -154,9 +152,7 @@ def api_add_recipe():
 @shopping_bp.route("/api/shopping-list/<int:id>/toggle-purchased", methods=["PUT"])
 def api_toggle(id):
     item = ShoppingListItem.query.get_or_404(id)
-    toggle_purchased(item)
-    db.session.commit()
-    return jsonify(item.to_dict())
+    return jsonify(error="Checkbox stock toggles are retired. Record an explicit purchase; use purchase history for a safe reversal.", purchaseUrl=url_for("purchases.new", shopping_id=item.id)), 409
 
 
 @shopping_bp.route("/api/shopping-list/<int:id>", methods=["DELETE"])

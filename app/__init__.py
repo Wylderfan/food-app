@@ -33,6 +33,8 @@ def create_app(config_name=None, config_overrides=None):
     from app.blueprints.recipes import recipes_bp
     from app.blueprints.inventory import inventory_bp
     from app.blueprints.shopping import shopping_bp
+    from app.blueprints.purchases import purchases_bp
+    app.register_blueprint(purchases_bp)
     from app.blueprints.cook import cook_bp
     app.register_blueprint(cook_bp)
     app.register_blueprint(main_bp)

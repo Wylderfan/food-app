@@ -273,3 +273,33 @@ def _immutable(mapper, connection, target):
 for _model in (CookPreview, CookEvent, CookUndo):
     event.listen(_model, 'before_update', _immutable)
     event.listen(_model, 'before_delete', _immutable)
+
+
+class PurchaseReceipt(db.Model):
+    __tablename__ = 'purchase_receipts'
+    token = db.Column(db.String(36), primary_key=True)
+    purchase_date = db.Column(db.Date, nullable=False)
+    store = db.Column(db.String(200), nullable=False)
+    currency = db.Column(db.String(3), nullable=False)
+    lines = db.Column(db.JSON, nullable=False)
+    total = db.Column(db.String(64), nullable=False)  # Exact decimal, including on SQLite.
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+
+class PurchaseLink(db.Model):
+    """Persistent even after shopping list rows are cleared; no cascade."""
+    __tablename__ = 'purchase_links'
+    shopping_id = db.Column(db.Integer, primary_key=True)
+    shopping_created = db.Column(db.String(40), primary_key=True)
+    token = db.Column(db.String(36), nullable=False)
+
+
+class PurchaseVoid(db.Model):
+    __tablename__ = 'purchase_voids'
+    token = db.Column(db.String(36), primary_key=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+
+for _model in (PurchaseReceipt, PurchaseLink, PurchaseVoid):
+    event.listen(_model, 'before_update', _immutable)
+    event.listen(_model, 'before_delete', _immutable)

@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+{% block title %}Purchases and costs — {{ config.APP_NAME }}{% endblock %}
+{% block content %}
+<section class="max-w-3xl mx-auto space-y-5">
+<h1 class="text-2xl">Purchases and costs</h1>
+<a href="/purchases/new" class="inline-block bg-indigo-600 rounded px-4 py-3">Record purchase</a>
+<a href="/shopping-list" class="inline-block text-indigo-300 p-3">Shopping list</a>
+<p>Shared pantry purchase history. Actual recorded line prices; currencies stay separate. Voids preserve original records. Historical shopping checkboxes have no inferred price.</p>
+{% for currency, values in totals.items() %}<p><strong>{{ currency }}</strong> · Recorded {{ values.gross|money }} · Voided {{ values.voided|money }} · Net {{ values.net|money }}</p>{% endfor %}
+{% for receipt in receipts %}<article class="border border-gray-700 rounded p-4 space-y-3">
+<h2 class="text-xl">{{ receipt.store }} · {{ receipt.purchase_date }} · {{ receipt.currency }} {{ receipt.total|money }}</h2>
+<ul>{% for line in receipt.lines %}<li>{{ line.name }}: {{ '%g'|format(line.quantity) }} {{ line.unit }} · {{ receipt.currency }} {{ line.price }} total · stock +{{ '%g'|format(line.stock_quantity) }} {{ line.stock_unit }}</li>{% endfor %}</ul>
+{% if receipt.token in voided %}<p>Voided — original stock additions reversed; prices retained.</p>{% else %}
+<details><summary class="cursor-pointer py-2">Void this recorded purchase</summary><p>Only for an entry recorded in error, not an actual return/refund. This reverses original stock additions and excludes the receipt from net spending. If stock was corrected or used, reversal may be blocked.</p><form method="POST" action="/purchases/{{ receipt.token }}/void"><button class="border rounded px-4 py-3 mt-2">Confirm void and reverse stock</button></form></details>{% endif %}
+</article>{% else %}<p>No purchase receipts recorded yet.</p>{% endfor %}
+<h2 class="text-xl">Comparable unit prices</h2>
+<p>Same ingredient, compatible unit and currency only. Recorded package sizes are explicit; no density, package-size or FX guesses. Display rounded to six decimals.</p>
+{% for group in comparisons %}<div class="border border-gray-700 rounded p-4"><h3>{{ group[0].name }} · {{ group[0].currency }} per {{ group[0].unit }}</h3><ul>{% for row in group %}<li>{{ row.date }} · {{ row.store }} · {{ '%.6f'|format(row.unit_price) }} {{ row.currency }}/{{ row.unit }}</li>{% endfor %}</ul></div>{% endfor %}
+</section>{% endblock %}

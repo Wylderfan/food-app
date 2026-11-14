@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% block title %}Record purchase — {{ config.APP_NAME }}{% endblock %}
+{% block content %}
+<section class="max-w-2xl mx-auto space-y-4">
+<h1 class="text-2xl">Record a purchase</h1>
+<p>Enter actual receipt line totals, including any tax or discount allocated to each line. Saving explicitly adds these goods to stock once. Do not enter a purchase already recorded here.</p>
+{% if item %}<p>Completes shopping row: {{ item.ingredient.name }}. Change the quantity to what you actually bought.</p>{% endif %}
+<form method="POST" class="space-y-4">
+<input type="hidden" name="token" value="{{ form.get('token') }}">
+{% if item %}<input type="hidden" name="shopping_id" value="{{ item.id }}"><input type="hidden" name="shopping_created" value="{{ shopping_created }}">{% endif %}
+<div class="flex flex-wrap gap-4">
+<label>Purchase date <input type="date" name="date" value="{{ form.get('date','') }}" required class="block bg-gray-800 rounded p-2"></label>
+<label>Store <input name="store" maxlength="200" required value="{{ form.get('store','') }}" class="block bg-gray-800 rounded p-2 max-w-full"></label>
+<label>Currency <input name="currency" placeholder="e.g. GBP" minlength="3" maxlength="3" required value="{{ form.get('currency','') }}" class="block bg-gray-800 rounded p-2 w-28"></label>
+</div>
+<p>Up to five lines per receipt. Leave unused lines completely blank. Prices may have up to four decimal places; no currency conversion is performed.</p>
+{% for n in range(5) %}
+<fieldset class="border border-gray-700 rounded p-4 space-y-3"><legend>Line {{ n+1 }}{% if n > 0 %} (optional){% endif %}</legend>
+<label class="block">Ingredient {{ n+1 }} <select name="ingredient_id_{{ n }}" {% if n == 0 %}required{% endif %} class="block w-full bg-gray-800 rounded p-2"><option value="">Choose ingredient</option>{% for ing in ingredients %}<option value="{{ ing.id }}" {% if form.get('ingredient_id_'~n, item.ingredient_id|string if item and n == 0 else '') == ing.id|string %}selected{% endif %}>{{ ing.name }}</option>{% endfor %}</select></label>
+<div class="flex flex-wrap gap-3">
+<label>Quantity {{ n+1 }} <input name="quantity_{{ n }}" type="number" min="0.000001" step="any" {% if n == 0 %}required{% endif %} value="{{ form.get('quantity_'~n, item.quantity_needed if item and n == 0 else '') }}" class="block w-28 bg-gray-800 rounded p-2"></label>
+<label>Unit {{ n+1 }} <input name="unit_{{ n }}" placeholder="g, kg, ml, l, count" {% if n == 0 %}required{% endif %} value="{{ form.get('unit_'~n, item.unit if item and n == 0 else '') }}" class="block w-40 bg-gray-800 rounded p-2"></label>
+<label>Actual line price {{ n+1 }} <input name="price_{{ n }}" type="number" min="0" step="0.0001" {% if n == 0 %}required{% endif %} value="{{ form.get('price_'~n,'') }}" class="block w-36 bg-gray-800 rounded p-2"></label>
+</div></fieldset>{% endfor %}
+<button class="bg-indigo-600 rounded px-4 py-3">Record purchase and add goods to stock</button>
+<a href="/shopping-list" class="block text-indigo-300 py-3">Cancel — no stock change</a>
+</form></section>
+{% endblock %}
