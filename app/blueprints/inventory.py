@@ -74,6 +74,8 @@ def api_set(ingredient_id):
 
     item = get_or_create_item(ingredient_id)
     if qty is not None:
+        from app.utils.transactions import touch
+        touch(ingredient_id)
         item.quantity_on_hand = qty
         certainty = db.session.get(PantryCertainty, ingredient_id)
         if certainty:

@@ -35,6 +35,8 @@ def new_ingredient():
             qty = _float(request.form.get("quantity_on_hand"))
             if qty is not None and qty != 0:
                 item = get_or_create_item(ing.id)
+                from app.utils.transactions import touch
+                touch(ing.id)
                 item.quantity_on_hand = qty
                 certainty = db.session.get(PantryCertainty, item.ingredient_id)
                 if certainty:
@@ -66,6 +68,8 @@ def edit_ingredient(id):
             qty = _float(request.form.get("quantity_on_hand"))
             if qty is not None:
                 item = get_or_create_item(ing.id)
+                from app.utils.transactions import touch
+                touch(ing.id)
                 item.quantity_on_hand = qty
                 certainty = db.session.get(PantryCertainty, item.ingredient_id)
                 if certainty:

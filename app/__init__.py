@@ -22,6 +22,9 @@ def create_app(config_name=None, config_overrides=None):
 
     db.init_app(app)
 
+    from app.utils.transactions import install_transactions
+    install_transactions(app)
+
     # Side-effect import: registers model classes with SQLAlchemy metadata
     from . import models  # noqa: F401
 

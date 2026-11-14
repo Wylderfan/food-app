@@ -227,3 +227,49 @@ class RecipePreference(db.Model):
     profile_id = db.Column(db.String(100), primary_key=True)
     rating = db.Column(db.Integer)
     archived = db.Column(db.Boolean, nullable=False, default=False)
+
+
+class StockEpoch(db.Model):
+    """No FK: deletion/recreation must not erase correction history."""
+    __tablename__ = 'stock_epochs'
+    ingredient_id = db.Column(db.Integer, primary_key=True)
+    revision = db.Column(db.Integer, nullable=False, default=0)
+
+
+class CookPreview(db.Model):
+    __tablename__ = 'cook_previews'
+    token = db.Column(db.String(36), primary_key=True)
+    profile_id = db.Column(db.String(100), nullable=False)
+    recipe_id = db.Column(db.Integer, nullable=False)
+    recipe_name = db.Column(db.String(200), nullable=False)
+    servings = db.Column(db.Float, nullable=False)
+    snapshot = db.Column(db.JSON, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+
+class CookEvent(db.Model):
+    __tablename__ = 'cook_events'
+    token = db.Column(db.String(36), primary_key=True)
+    profile_id = db.Column(db.String(100), nullable=False)
+    recipe_id = db.Column(db.Integer, nullable=False)
+    recipe_name = db.Column(db.String(200), nullable=False)
+    servings = db.Column(db.Float, nullable=False)
+    snapshot = db.Column(db.JSON, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+
+class CookUndo(db.Model):
+    __tablename__ = 'cook_undos'
+    token = db.Column(db.String(36), primary_key=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+
+# Snapshots survive ingredient/recipe deletion. No edit/delete application paths.
+from sqlalchemy import event
+
+def _immutable(mapper, connection, target):
+    raise ValueError('History is immutable; record a reversal instead.')
+
+for _model in (CookPreview, CookEvent, CookUndo):
+    event.listen(_model, 'before_update', _immutable)
+    event.listen(_model, 'before_delete', _immutable)
