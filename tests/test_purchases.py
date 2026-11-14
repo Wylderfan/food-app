@@ -30,7 +30,7 @@ class PurchaseTests(unittest.TestCase):
         self.assertEqual(self.amount(),700)
         with self.app.app_context():
             receipt=PurchaseReceipt.query.one()
-            self.assertEqual(receipt.total,Decimal('2.4500'))
+            self.assertEqual(Decimal(receipt.total),Decimal('2.4500'))
             self.assertEqual(receipt.lines[0]['stock_quantity'],200)
             self.assertEqual(receipt.lines[0]['price'],'2.45')
             db.session.get(Ingredient,self.i).name='Renamed';db.session.commit()
@@ -45,7 +45,7 @@ class PurchaseTests(unittest.TestCase):
     def test_multiline_same_ingredient_aggregated_void(self):
         data=self.payload(ingredient_id_1=str(self.i),quantity_1='300',unit_1='g',price_1='1.55')
         self.buy(data);self.assertEqual(self.amount(),1000)
-        with self.app.app_context():self.assertEqual(PurchaseReceipt.query.one().total,Decimal('4'))
+        with self.app.app_context():self.assertEqual(Decimal(PurchaseReceipt.query.one().total),Decimal('4'))
         self.client.post('/purchases/'+data['token']+'/void');self.assertEqual(self.amount(),500)
 
     def test_invalid_line_rolls_back_all(self):

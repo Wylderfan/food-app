@@ -87,7 +87,7 @@ def record_purchase(data):
             db.session.get(ShoppingListItem, line['shopping_id']).purchased = True
             db.session.add(PurchaseLink(shopping_id=line['shopping_id'], shopping_created=shopping_identity(db.session.get(ShoppingListItem, line['shopping_id'])), token=token))
     receipt = PurchaseReceipt(token=token, purchase_date=purchased_on, store=store,
-                              currency=currency, lines=lines, total=total)
+                              currency=currency, lines=lines, total=str(total))
     db.session.add(receipt)
     return receipt
 
@@ -124,11 +124,11 @@ def cost_summary(receipts, voided):
     totals, comparisons = {}, {}
     for receipt in receipts:
         row = totals.setdefault(receipt.currency, dict(gross=Decimal(0), voided=Decimal(0), net=Decimal(0)))
-        row['gross'] += receipt.total
+        row['gross'] += Decimal(receipt.total)
         if receipt.token in voided:
-            row['voided'] += receipt.total
+            row['voided'] += Decimal(receipt.total)
             continue
-        row['net'] += receipt.total
+        row['net'] += Decimal(receipt.total)
         for line in receipt.lines:
             key = (line['ingredient_id'], line['ingredient_created'], receipt.currency, line['base_unit'])
             price = Decimal(line['price']) / Decimal(str(line['base_quantity']))

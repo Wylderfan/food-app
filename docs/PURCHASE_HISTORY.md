@@ -19,7 +19,7 @@ be stocked again under another token. Row creation identity prevents old forms
 from targeting a newly created SQLite row that reused a cleared integer ID.
 
 Prices remain decimal strings in line snapshots, with up to four decimal places;
-receipt totals use Numeric(18,4). Free/zero-price lines are explicit. History
+receipt totals also use decimal strings to avoid SQLite floating-point money rounding. Free/zero-price lines are explicit. History
 shows recorded, voided and net totals separately per entered currency. Codes are
 user-entered three-letter labels, not validated against an external currency API.
 Comparisons group the same ingredient lifetime, equivalent base unit and currency.

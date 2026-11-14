@@ -282,7 +282,7 @@ class PurchaseReceipt(db.Model):
     store = db.Column(db.String(200), nullable=False)
     currency = db.Column(db.String(3), nullable=False)
     lines = db.Column(db.JSON, nullable=False)
-    total = db.Column(db.Numeric(18, 4), nullable=False)
+    total = db.Column(db.String(64), nullable=False)  # Exact decimal, including on SQLite.
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
 

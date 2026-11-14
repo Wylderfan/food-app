@@ -8,6 +8,12 @@ from app.utils.purchases import record_purchase, void_purchase, cost_summary, li
 purchases_bp = Blueprint('purchases', __name__)
 
 
+@purchases_bp.app_template_filter('money')
+def money(value):
+    from decimal import Decimal
+    return format(Decimal(str(value)), '.4f')
+
+
 def form_page(form=None):
     form = form or dict(token=str(uuid4()), date=date.today().isoformat())
     ingredients = Ingredient.query.order_by(Ingredient.name).all()
